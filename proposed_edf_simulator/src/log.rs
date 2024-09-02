@@ -10,15 +10,6 @@ pub fn dump_struct(file_path: &str, target_struct: &impl Serialize) {
 }
 
 #[derive(Clone, Default, Serialize, Deserialize)]
-pub struct DAGInfo {
-    critical_path_length: i32,
-    period: i32,
-    end_to_end_deadline: i32,
-    volume: i32,
-    utilization: f32,
-}
-
-#[derive(Clone, Default, Serialize, Deserialize)]
 pub struct ProcessorInfo {
     number_of_cores: usize,
 }
@@ -35,6 +26,7 @@ pub struct DAGLog {
     release_time: Vec<i32>,
     finish_time: Vec<i32>,
     response_time: Vec<i32>,
+    best_response_time: i32,
     average_response_time: f32,
     worst_response_time: i32,
 }
@@ -46,6 +38,7 @@ impl DAGLog {
             release_time: Default::default(),
             finish_time: Default::default(),
             response_time: Default::default(),
+            best_response_time: Default::default(),
             average_response_time: Default::default(),
             worst_response_time: Default::default(),
         }
@@ -63,6 +56,10 @@ impl DAGLog {
             .zip(self.finish_time.iter())
             .map(|(release_time, finish_time)| *finish_time - *release_time)
             .collect();
+    }
+
+    pub fn calculate_best_response_time(&mut self) {
+        self.best_response_time = *self.response_time.iter().min().unwrap();
     }
 
     pub fn calculate_average_response_time(&mut self) {
@@ -170,67 +167,6 @@ impl CoreLog {
 
     fn calculate_utilization(&mut self, schedule_length: i32) {
         self.utilization = self.total_proc_time as f32 / schedule_length as f32;
-    }
-}
-
-#[derive(Clone, Default, Serialize, Deserialize)]
-pub struct DAGSchedulerLog {
-    processor_info: ProcessorInfo,
-    node_logs: Vec<JobLog>,
-    processor_log: ProcessorLog,
-}
-
-impl DAGSchedulerLog {
-    pub fn new(dag: &Graph<NodeData, i32>, num_cores: usize) -> Self {
-        Self {
-            processor_info: ProcessorInfo::new(num_cores),
-            node_logs: Vec::new(),
-            processor_log: ProcessorLog::new(num_cores),
-        }
-    }
-
-    pub fn write_allocating_job(
-        &mut self,
-        node_data: &NodeData,
-        core_id: usize,
-        current_time: i32,
-    ) {
-        let job_log = JobLog::new(
-            core_id,
-            0, // This is a fixed value because DAG is only one.
-            node_data.id as usize,
-            0, // This is a fixed value because DAG is released only once.
-            JobEventTimes::StartTime(current_time),
-        );
-        self.node_logs.push(job_log);
-    }
-
-    pub fn write_processing_time(&mut self, core_indices: &[usize]) {
-        for core_index in core_indices {
-            self.processor_log.core_logs[*core_index].total_proc_time += 1;
-        }
-    }
-
-    pub fn write_finishing_job(&mut self, node_data: &NodeData, core_id: usize, current_time: i32) {
-        let job_log = JobLog::new(
-            core_id,
-            0, // This is a fixed value because DAG is only one.
-            node_data.id as usize,
-            0, // This is a fixed value because DAG is released only once.
-            JobEventTimes::FinishTime(current_time),
-        );
-        self.node_logs.push(job_log);
-    }
-
-    pub fn calculate_utilization(&mut self, schedule_length: i32) {
-        self.processor_log
-            .calculate_cores_utilization(schedule_length);
-        self.processor_log.calculate_average_utilization();
-        self.processor_log.calculate_variance_utilization();
-    }
-
-    pub fn dump_log_to_yaml(&self, file_path: &str) {
-        dump_struct(file_path, self);
     }
 }
 

@@ -1,8 +1,10 @@
 //! This module contains the definition of the core and the process result enum
 use crate::{core::ProcessResult::*, graph_extension::NodeData};
+use getset::{CopyGetters, Getters};
 use log::warn;
-///enum to represent three types of states
-///execution not possible because not allocate, execution in progress, execution finished
+
+/// enum to represent three types of states
+/// execution not possible because not allocate, execution in progress, execution finished
 #[derive(Debug, PartialEq, Clone)]
 pub enum ProcessResult {
     Idle,
@@ -10,9 +12,11 @@ pub enum ProcessResult {
     Done(NodeData),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, CopyGetters, Getters, Debug)]
 pub struct Core {
+    #[get_copy = "pub with_prefix"]
     pub is_idle: bool,
+    #[get = "pub with_prefix"]
     pub processing_node: Option<NodeData>,
     pub remain_proc_time: i32,
 }
@@ -27,7 +31,7 @@ impl Default for Core {
     }
 }
 
-///return bool since "panic!" would terminate
+/// return bool since "panic!" would terminate
 impl Core {
     pub fn allocate(&mut self, node_data: &NodeData) -> bool {
         if !self.is_idle {

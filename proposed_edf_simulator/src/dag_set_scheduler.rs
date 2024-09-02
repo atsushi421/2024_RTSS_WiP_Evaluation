@@ -14,9 +14,9 @@ pub struct NodeDataWrapper {
     pub node_data: NodeData,
 }
 
-impl Ord for NodeDataWrapper {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).unwrap_or(Ordering::Equal)
+impl PartialOrd for NodeDataWrapper {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -40,6 +40,7 @@ pub trait DAGStateManagerBase {
     fn set_release_count(&mut self, release_count: i32);
     fn get_dag_state(&self) -> DAGState;
     fn set_dag_state(&mut self, dag_state: DAGState);
+
     // method implementation
     fn complete_execution(&mut self) {
         self.set_dag_state(DAGState::Waiting);
@@ -51,6 +52,7 @@ pub trait DAGStateManagerBase {
     }
 }
 
+/// This is associated with a single DAG.
 #[derive(Clone, Default)]
 pub struct DAGStateManager {
     dag_state: DAGState,
@@ -86,8 +88,10 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
     fn get_log_mut(&mut self) -> &mut DAGSetSchedulerLog;
     fn get_current_time(&self) -> i32;
     fn set_current_time(&mut self, current_time: i32);
+
     // method definition
     fn new(dag_set: &[Graph<NodeData, i32>], processor: &T) -> Self;
+
     // method implementation
     fn release_dags(&mut self, managers: &mut [impl DAGStateManagerBase]) -> Vec<NodeData> {
         let current_time = self.get_current_time();
@@ -113,6 +117,7 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
             }
         }
         self.set_dag_set(dag_set);
+
         ready_nodes
     }
 
@@ -212,7 +217,8 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
         // Start scheduling
         let mut managers = vec![DAGStateManager::default(); self.get_dag_set().len()];
         let mut ready_queue = BTreeSet::new();
-        let hyper_period = get_hyper_period(&self.get_dag_set());
+        let hyper_period = get_hyper_period(&self.get_dag_set()); // TODO: change this duration
+
         while self.get_current_time() < hyper_period {
             // Release DAGs
             let ready_nodes = self.release_dags(&mut managers);

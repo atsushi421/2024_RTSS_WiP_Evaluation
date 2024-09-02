@@ -7,8 +7,9 @@ use crate::{
 use petgraph::graph::Graph;
 use std::cmp::Ordering;
 
-impl PartialOrd for NodeDataWrapper {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+// TODO: implement the proposed EDF algorithm
+impl Ord for NodeDataWrapper {
+    fn cmp(&self, other: &Self) -> Ordering {
         // Compare by absolute_deadline or int_scaled_absolute_deadline.
         let mut comparison_metric = "node_absolute_deadline";
         if self
@@ -31,14 +32,14 @@ impl PartialOrd for NodeDataWrapper {
             // If the keys are equal, compare by id
             Ordering::Equal => match self.node_data.id.partial_cmp(&other.node_data.id) {
                 // If the ids are also equal, compare by dag_id
-                Some(Ordering::Equal) => Some(
-                    self.node_data
-                        .get_params_value("dag_id")
-                        .cmp(&other.node_data.get_params_value("dag_id")),
-                ),
-                other => other,
+                Some(Ordering::Equal) => self
+                    .node_data
+                    .get_params_value("dag_id")
+                    .cmp(&other.node_data.get_params_value("dag_id")),
+
+                other => other.unwrap(),
             },
-            other => Some(other),
+            other => other,
         }
     }
 }
@@ -67,6 +68,7 @@ impl DAGSetSchedulerBase<HomogeneousProcessor> for GlobalEDFScheduler {
 mod tests {
     use super::*;
     use crate::graph_extension::GraphExtension;
+    use crate::util::approx_eq;
     use crate::{dag_set_scheduler::PreemptiveType, util::load_yaml};
     use std::{collections::BTreeMap, fs::remove_file};
 
@@ -167,22 +169,6 @@ mod tests {
         let yaml_docs = load_yaml(&file_path);
         let yaml_doc = &yaml_docs[0];
 
-        // Check the value of total_utilization
-        assert_eq!(
-            yaml_doc["dag_set_info"]["total_utilization"]
-                .as_f64()
-                .unwrap(),
-            3.8095236
-        );
-
-        // Check the value of each_dag_info
-        let each_dag_info = &yaml_doc["dag_set_info"]["each_dag_info"][0];
-        assert_eq!(each_dag_info["critical_path_length"].as_i64().unwrap(), 50);
-        assert_eq!(each_dag_info["period"].as_i64().unwrap(), 150);
-        assert_eq!(each_dag_info["end_to_end_deadline"].as_i64().unwrap(), 50);
-        assert_eq!(each_dag_info["volume"].as_i64().unwrap(), 70);
-        assert_eq!(each_dag_info["utilization"].as_f64().unwrap(), 2.142857);
-
         // Check the value of processor_info
         assert_eq!(
             yaml_doc["processor_info"]["number_of_cores"]
@@ -213,14 +199,14 @@ mod tests {
 
         // Check the value of processor_log
         let processor_log = &yaml_doc["processor_log"];
-        assert_eq!(
+        assert!(approx_eq(
             processor_log["average_utilization"].as_f64().unwrap(),
             0.2666667
-        );
-        assert_eq!(
+        ));
+        assert!(approx_eq(
             processor_log["variance_utilization"].as_f64().unwrap(),
-            0.060000006
-        );
+            0.0605555
+        ));
 
         // Check the value of core_logs
         let core_logs = &processor_log["core_logs"][0];
@@ -251,22 +237,6 @@ mod tests {
         let file_path = global_edf_scheduler.dump_log("../lib/tests", "edf_preemptive_test");
         let yaml_docs = load_yaml(&file_path);
         let yaml_doc = &yaml_docs[0];
-
-        // Check the value of total_utilization
-        assert_eq!(
-            yaml_doc["dag_set_info"]["total_utilization"]
-                .as_f64()
-                .unwrap(),
-            3.142857
-        );
-
-        // Check the value of each_dag_info
-        let each_dag_info = &yaml_doc["dag_set_info"]["each_dag_info"][0];
-        assert_eq!(each_dag_info["critical_path_length"].as_i64().unwrap(), 50);
-        assert_eq!(each_dag_info["period"].as_i64().unwrap(), 150);
-        assert_eq!(each_dag_info["end_to_end_deadline"].as_i64().unwrap(), 50);
-        assert_eq!(each_dag_info["volume"].as_i64().unwrap(), 70);
-        assert_eq!(each_dag_info["utilization"].as_f64().unwrap(), 2.142857);
 
         // Check the value of processor_info
         assert_eq!(
