@@ -6,18 +6,12 @@ use crate::{
     util::{create_scheduler_log_yaml, get_hyper_period, get_process_core_indices},
 };
 use petgraph::graph::{Graph, NodeIndex};
-use std::{cmp::Ordering, collections::BTreeSet};
+use std::collections::VecDeque;
 
 // Define a new wrapper type
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NodeDataWrapper {
     pub node_data: NodeData,
-}
-
-impl PartialOrd for NodeDataWrapper {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
 }
 
 impl NodeDataWrapper {
@@ -91,6 +85,7 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
 
     // method definition
     fn new(dag_set: &[Graph<NodeData, i32>], processor: &T) -> Self;
+    fn sort_ready_queue(&self, ready_queue: &mut VecDeque<NodeDataWrapper>);
 
     // method implementation
     fn release_dags(&mut self, managers: &mut [impl DAGStateManagerBase]) -> Vec<NodeData> {
@@ -216,23 +211,24 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
     fn schedule(&mut self, preemptive_type: PreemptiveType) -> i32 {
         // Start scheduling
         let mut managers = vec![DAGStateManager::default(); self.get_dag_set().len()];
-        let mut ready_queue = BTreeSet::new();
+        let mut ready_queue = VecDeque::new();
         let hyper_period = get_hyper_period(&self.get_dag_set()); // TODO: change this duration
 
         while self.get_current_time() < hyper_period {
             // Release DAGs
             let ready_nodes = self.release_dags(&mut managers);
             for ready_node in ready_nodes {
-                ready_queue.insert(NodeDataWrapper {
+                ready_queue.push_back(NodeDataWrapper {
                     node_data: ready_node,
                 });
             }
+            self.sort_ready_queue(&mut ready_queue);
 
             // Allocate nodes as long as there are idle cores, and attempt to preempt when all cores are busy.
             while !ready_queue.is_empty() {
                 if let Some(idle_core_i) = self.get_processor().get_idle_core_index() {
                     // Allocate the node to the idle core
-                    let node_data = ready_queue.pop_first().unwrap().convert_node_data();
+                    let node_data = ready_queue.pop_front().unwrap().convert_node_data();
                     self.allocate_node(
                         &node_data,
                         idle_core_i,
@@ -240,7 +236,7 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
                             as usize,
                     );
                 } else if let Some(core_i) =
-                    self.can_preempt(&preemptive_type, ready_queue.first().unwrap())
+                    self.can_preempt(&preemptive_type, ready_queue.front().unwrap())
                 {
                     // Preempt the node with the lowest priority
                     let current_time = self.get_current_time();
@@ -256,7 +252,7 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
                         JobEventTimes::PreemptedTime(current_time),
                     );
                     // Allocate the preempted node
-                    let allocate_node_data = &ready_queue.pop_first().unwrap().convert_node_data();
+                    let allocate_node_data = &ready_queue.pop_front().unwrap().convert_node_data();
                     self.allocate_node(
                         allocate_node_data,
                         core_i,
@@ -264,9 +260,10 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
                             .get_release_count() as usize,
                     );
                     // Insert the preempted node into the ready queue
-                    ready_queue.insert(NodeDataWrapper {
+                    ready_queue.push_back(NodeDataWrapper {
                         node_data: preempted_node_data,
                     });
+                    self.sort_ready_queue(&mut ready_queue);
                 } else {
                     break; // No core is idle and can not preempt. Exit the loop.
                 }
@@ -286,12 +283,13 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
                     let ready_nodes =
                         self.post_process_on_node_completion(node_data, core_id, &mut managers);
                     for ready_node in ready_nodes {
-                        ready_queue.insert(NodeDataWrapper {
+                        ready_queue.push_back(NodeDataWrapper {
                             node_data: ready_node,
                         });
                     }
                 }
             }
+            self.sort_ready_queue(&mut ready_queue);
         }
 
         self.calculate_log();

@@ -6,43 +6,7 @@ use crate::{
 };
 use petgraph::graph::Graph;
 use std::cmp::Ordering;
-
-// TODO: implement the proposed EDF algorithm
-impl Ord for NodeDataWrapper {
-    fn cmp(&self, other: &Self) -> Ordering {
-        // Compare by absolute_deadline or int_scaled_absolute_deadline.
-        let mut comparison_metric = "node_absolute_deadline";
-        if self
-            .node_data
-            .params
-            .contains_key("int_scaled_node_absolute_deadline")
-            && other
-                .node_data
-                .params
-                .contains_key("int_scaled_node_absolute_deadline")
-        {
-            comparison_metric = "int_scaled_node_absolute_deadline"; // decomposition-based algorithm
-        }
-
-        match self
-            .node_data
-            .get_params_value(comparison_metric)
-            .cmp(&other.node_data.get_params_value(comparison_metric))
-        {
-            // If the keys are equal, compare by id
-            Ordering::Equal => match self.node_data.id.partial_cmp(&other.node_data.id) {
-                // If the ids are also equal, compare by dag_id
-                Some(Ordering::Equal) => self
-                    .node_data
-                    .get_params_value("dag_id")
-                    .cmp(&other.node_data.get_params_value("dag_id")),
-
-                other => other.unwrap(),
-            },
-            other => other,
-        }
-    }
-}
+use std::collections::VecDeque;
 
 pub struct GlobalEDFScheduler {
     dag_set: Vec<Graph<NodeData, i32>>,
@@ -59,6 +23,41 @@ impl DAGSetSchedulerBase<HomogeneousProcessor> for GlobalEDFScheduler {
             log: DAGSetSchedulerLog::new(dag_set, processor.get_number_of_cores()),
             current_time: 0,
         }
+    }
+
+    fn sort_ready_queue(&self, ready_queue: &mut VecDeque<NodeDataWrapper>) {
+        // TODO: implement the proposed EDF algorithm
+        ready_queue.make_contiguous().sort_by(|a, b| {
+            // Compare by absolute_deadline or int_scaled_absolute_deadline.
+            let mut comparison_metric = "node_absolute_deadline";
+            if a.node_data
+                .params
+                .contains_key("int_scaled_node_absolute_deadline")
+                && b.node_data
+                    .params
+                    .contains_key("int_scaled_node_absolute_deadline")
+            {
+                comparison_metric = "int_scaled_node_absolute_deadline"; // decomposition-based algorithm
+            }
+
+            match a
+                .node_data
+                .get_params_value(comparison_metric)
+                .cmp(&b.node_data.get_params_value(comparison_metric))
+            {
+                // If the keys are equal, compare by id
+                Ordering::Equal => match a.node_data.id.partial_cmp(&b.node_data.id) {
+                    // If the ids are also equal, compare by dag_id
+                    Some(Ordering::Equal) => a
+                        .node_data
+                        .get_params_value("dag_id")
+                        .cmp(&b.node_data.get_params_value("dag_id")),
+
+                    other => other.unwrap(),
+                },
+                other => other,
+            }
+        });
     }
 
     getset_dag_set_scheduler!(HomogeneousProcessor);
