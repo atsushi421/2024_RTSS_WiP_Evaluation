@@ -1,4 +1,4 @@
-use crate::dag_set_scheduler::{DAGSetSchedulerBase, NodeDataWrapper};
+use crate::dag_set_scheduler::DAGSetSchedulerBase;
 use crate::getset_dag_set_scheduler;
 use crate::{
     graph_extension::NodeData, homogeneous::HomogeneousProcessor, log::DAGSetSchedulerLog,
@@ -25,33 +25,27 @@ impl DAGSetSchedulerBase<HomogeneousProcessor> for GlobalEDFScheduler {
         }
     }
 
-    fn sort_ready_queue(&self, ready_queue: &mut VecDeque<NodeDataWrapper>) {
+    fn sort_ready_queue(&self, ready_queue: &mut VecDeque<NodeData>) {
         // TODO: implement the proposed EDF algorithm
         ready_queue.make_contiguous().sort_by(|a, b| {
             // Compare by absolute_deadline or int_scaled_absolute_deadline.
             let mut comparison_metric = "node_absolute_deadline";
-            if a.node_data
-                .params
-                .contains_key("int_scaled_node_absolute_deadline")
-                && b.node_data
-                    .params
-                    .contains_key("int_scaled_node_absolute_deadline")
+            if a.params.contains_key("int_scaled_node_absolute_deadline")
+                && b.params.contains_key("int_scaled_node_absolute_deadline")
             {
                 comparison_metric = "int_scaled_node_absolute_deadline"; // decomposition-based algorithm
             }
 
             match a
-                .node_data
                 .get_params_value(comparison_metric)
-                .cmp(&b.node_data.get_params_value(comparison_metric))
+                .cmp(&b.get_params_value(comparison_metric))
             {
                 // If the keys are equal, compare by id
-                Ordering::Equal => match a.node_data.id.partial_cmp(&b.node_data.id) {
+                Ordering::Equal => match a.id.partial_cmp(&b.id) {
                     // If the ids are also equal, compare by dag_id
                     Some(Ordering::Equal) => a
-                        .node_data
                         .get_params_value("dag_id")
-                        .cmp(&b.node_data.get_params_value("dag_id")),
+                        .cmp(&b.get_params_value("dag_id")),
 
                     other => other.unwrap(),
                 },

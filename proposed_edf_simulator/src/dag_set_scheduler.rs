@@ -8,18 +8,6 @@ use crate::{
 use petgraph::graph::{Graph, NodeIndex};
 use std::collections::VecDeque;
 
-// Define a new wrapper type
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NodeDataWrapper {
-    pub node_data: NodeData,
-}
-
-impl NodeDataWrapper {
-    pub fn convert_node_data(&self) -> NodeData {
-        self.node_data.clone()
-    }
-}
-
 #[derive(Clone, Default, PartialEq)]
 pub enum DAGState {
     #[default]
@@ -85,7 +73,7 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
 
     // method definition
     fn new(dag_set: &[Graph<NodeData, i32>], processor: &T) -> Self;
-    fn sort_ready_queue(&self, ready_queue: &mut VecDeque<NodeDataWrapper>);
+    fn sort_ready_queue(&self, ready_queue: &mut VecDeque<NodeData>);
 
     // method implementation
     fn release_dags(&mut self, managers: &mut [impl DAGStateManagerBase]) -> Vec<NodeData> {
@@ -185,7 +173,7 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
     fn can_preempt(
         &self,
         preemptive_type: &PreemptiveType,
-        ready_head_node: &NodeDataWrapper,
+        ready_head_node: &NodeData,
     ) -> Option<usize> {
         if let PreemptiveType::Preemptive {
             key: preemptive_key,
@@ -196,11 +184,7 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
                 .get_max_value_and_index(preemptive_key)
                 .unwrap();
 
-            if max_value
-                > ready_head_node
-                    .convert_node_data()
-                    .get_params_value(preemptive_key)
-            {
+            if max_value > ready_head_node.get_params_value(preemptive_key) {
                 return Some(core_i);
             }
         }
@@ -218,9 +202,7 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
             // Release DAGs
             let ready_nodes = self.release_dags(&mut managers);
             for ready_node in ready_nodes {
-                ready_queue.push_back(NodeDataWrapper {
-                    node_data: ready_node,
-                });
+                ready_queue.push_back(ready_node);
             }
             self.sort_ready_queue(&mut ready_queue);
 
@@ -228,7 +210,7 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
             while !ready_queue.is_empty() {
                 if let Some(idle_core_i) = self.get_processor().get_idle_core_index() {
                     // Allocate the node to the idle core
-                    let node_data = ready_queue.pop_front().unwrap().convert_node_data();
+                    let node_data = ready_queue.pop_front().unwrap();
                     self.allocate_node(
                         &node_data,
                         idle_core_i,
@@ -252,7 +234,7 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
                         JobEventTimes::PreemptedTime(current_time),
                     );
                     // Allocate the preempted node
-                    let allocate_node_data = &ready_queue.pop_front().unwrap().convert_node_data();
+                    let allocate_node_data = &ready_queue.pop_front().unwrap();
                     self.allocate_node(
                         allocate_node_data,
                         core_i,
@@ -260,9 +242,7 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
                             .get_release_count() as usize,
                     );
                     // Insert the preempted node into the ready queue
-                    ready_queue.push_back(NodeDataWrapper {
-                        node_data: preempted_node_data,
-                    });
+                    ready_queue.push_back(preempted_node_data);
                     self.sort_ready_queue(&mut ready_queue);
                 } else {
                     break; // No core is idle and can not preempt. Exit the loop.
@@ -283,9 +263,7 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
                     let ready_nodes =
                         self.post_process_on_node_completion(node_data, core_id, &mut managers);
                     for ready_node in ready_nodes {
-                        ready_queue.push_back(NodeDataWrapper {
-                            node_data: ready_node,
-                        });
+                        ready_queue.push_back(ready_node);
                     }
                 }
             }
