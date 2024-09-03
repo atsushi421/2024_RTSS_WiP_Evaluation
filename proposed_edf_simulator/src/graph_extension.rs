@@ -19,8 +19,8 @@ impl NodeData {
         NodeData { id, params }
     }
 
-    pub fn get_id(&self) -> i32 {
-        self.id
+    pub fn get_id(&self) -> NodeIndex {
+        NodeIndex::new(self.id as usize)
     }
 
     pub fn get_params_value(&self, key: &str) -> i32 {

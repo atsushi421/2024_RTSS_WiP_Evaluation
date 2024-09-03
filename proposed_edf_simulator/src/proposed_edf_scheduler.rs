@@ -1,5 +1,6 @@
 use crate::dag_set_scheduler::DAGSetSchedulerBase;
 use crate::getset_dag_set_scheduler;
+use crate::graph_extension::GraphExtension;
 use crate::{
     graph_extension::NodeData, homogeneous::HomogeneousProcessor, log::DAGSetSchedulerLog,
     processor::ProcessorBase,
@@ -25,20 +26,44 @@ impl DAGSetSchedulerBase<HomogeneousProcessor> for GlobalEDFScheduler {
         }
     }
 
-    fn sort_ready_queue(&self, ready_queue: &mut VecDeque<NodeData>) {
-        // TODO: implement the proposed EDF algorithm
-        ready_queue.make_contiguous().sort_by(|a, b| {
-            // Compare by absolute_deadline or int_scaled_absolute_deadline.
-            let mut comparison_metric = "node_absolute_deadline";
-            if a.params.contains_key("int_scaled_node_absolute_deadline")
-                && b.params.contains_key("int_scaled_node_absolute_deadline")
-            {
-                comparison_metric = "int_scaled_node_absolute_deadline"; // decomposition-based algorithm
-            }
+    fn update_params_when_release(dag: &mut Graph<NodeData, i32>, job_id: i32) {
+        let sink_nodes = dag.get_sink_nodes();
 
+        // Assign ref_absolute_deadline to sink nodes.
+        for sink_i in sink_nodes.iter() {
+            let sink_node = &mut dag[*sink_i];
+            sink_node.params.insert(
+                "ref_absolute_deadline".to_string(),
+                sink_node.get_params_value("relative_deadline")
+                    + job_id * sink_node.get_params_value("period"),
+            );
+        }
+
+        // Assign ref_absolute_deadline to non-sink nodes.
+        let non_sink_nodes = dag
+            .node_indices()
+            .filter(|node_i| !sink_nodes.contains(node_i))
+            .collect::<Vec<_>>();
+        for non_sink_i in non_sink_nodes {
+            let ref_absolute_deadline = dag
+                .get_des_nodes(non_sink_i)
+                .unwrap()
+                .iter()
+                .filter(|x| sink_nodes.contains(x))
+                .map(|x| dag[*x].get_params_value("ref_absolute_deadline"))
+                .min()
+                .unwrap();
+            dag[non_sink_i]
+                .params
+                .insert("ref_absolute_deadline".to_string(), ref_absolute_deadline);
+        }
+    }
+
+    fn sort_ready_queue(&self, ready_queue: &mut VecDeque<NodeData>) {
+        ready_queue.make_contiguous().sort_by(|a, b| {
             match a
-                .get_params_value(comparison_metric)
-                .cmp(&b.get_params_value(comparison_metric))
+                .get_params_value("ref_absolute_deadline")
+                .cmp(&b.get_params_value("ref_absolute_deadline"))
             {
                 // If the keys are equal, compare by id
                 Ordering::Equal => match a.id.partial_cmp(&b.id) {
@@ -46,7 +71,6 @@ impl DAGSetSchedulerBase<HomogeneousProcessor> for GlobalEDFScheduler {
                     Some(Ordering::Equal) => a
                         .get_params_value("dag_id")
                         .cmp(&b.get_params_value("dag_id")),
-
                     other => other.unwrap(),
                 },
                 other => other,

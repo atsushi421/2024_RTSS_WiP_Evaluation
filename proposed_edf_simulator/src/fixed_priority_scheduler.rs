@@ -23,6 +23,10 @@ impl DAGSetSchedulerBase<HomogeneousProcessor> for FixedPriorityScheduler {
         }
     }
 
+    fn update_params_when_release(_dag: &mut Graph<NodeData, i32>, _job_id: i32) {
+        // Do nothing.
+    }
+
     fn sort_ready_queue(&self, ready_queue: &mut std::collections::VecDeque<NodeData>) {
         ready_queue.make_contiguous().sort_by(|a, b| {
             a.get_params_value("priority")

@@ -74,6 +74,7 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
     // method definition
     fn new(dag_set: &[Graph<NodeData, i32>], processor: &T) -> Self;
     fn sort_ready_queue(&self, ready_queue: &mut VecDeque<NodeData>);
+    fn update_params_when_release(dag: &mut Graph<NodeData, i32>, job_id: i32);
 
     // method implementation
     fn release_dags(&mut self, managers: &mut [impl DAGStateManagerBase]) -> Vec<NodeData> {
@@ -88,11 +89,7 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
                     == dag.get_head_period().unwrap() * managers[dag_id].get_release_count())
             {
                 managers[dag_id].release();
-                // If Node does not have individual deadlines, use DAG deadline.
-                dag.set_dag_param(
-                    "node_absolute_deadline",
-                    1 * managers[dag_id].get_release_count(), // TODO: impl proposed EDF logic
-                );
+                Self::update_params_when_release(dag, managers[dag_id].get_release_count());
 
                 ready_nodes.push(dag[dag.get_source_nodes()[0]].clone());
                 self.get_log_mut()
@@ -137,7 +134,7 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
         let dag = &mut dag_set[dag_id];
 
         let mut ready_nodes = Vec::new();
-        if let Some(suc_nodes) = dag.get_suc_nodes(NodeIndex::new(node.get_id() as usize)) {
+        if let Some(suc_nodes) = dag.get_suc_nodes(node.get_id()) {
             for suc_node in suc_nodes {
                 if dag[suc_node].params.contains_key("pre_done_count") {
                     dag.update_param(
@@ -251,7 +248,7 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
 
             // Process unit time
             let process_result = self.process_unit_time();
-            // TODO: Will be refactoring the core structure to have a core log.
+
             // Write the processing time of the core to the log.
             let log = self.get_log_mut();
             let indices: Vec<usize> = get_process_core_indices(&process_result);
