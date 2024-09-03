@@ -1,5 +1,5 @@
 use clap::{Parser, ValueEnum};
-use proposed_edf_simulator::{
+use scheduling_simulator::{
     dag_creator::create_dag_set_from_dir,
     dag_set_scheduler::{DAGSetSchedulerBase, PreemptiveType},
     fixed_priority_scheduler::FixedPriorityScheduler,
