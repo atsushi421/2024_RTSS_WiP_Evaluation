@@ -102,8 +102,7 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
     }
 
     fn allocate_node(&mut self, node_data: &NodeData, core_id: usize, job_id: usize) {
-        self.get_processor_mut()
-            .allocate_specific_core(core_id, node_data);
+        self.get_processor_mut().allocate(core_id, node_data);
         let current_time = self.get_current_time();
         self.get_log_mut()
             .write_allocating_job(node_data, core_id, job_id, current_time)
@@ -178,7 +177,7 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
         {
             let (max_value, core_i) = self
                 .get_processor()
-                .get_max_value_and_index(preemptive_key)
+                .get_max_and_index(preemptive_key)
                 .unwrap();
 
             if max_value > ready_head_node.get_params_value(preemptive_key) {
@@ -205,7 +204,7 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
 
             // Allocate nodes as long as there are idle cores, and attempt to preempt when all cores are busy.
             while !ready_queue.is_empty() {
-                if let Some(idle_core_i) = self.get_processor().get_idle_core_index() {
+                if let Some(idle_core_i) = self.get_processor().get_idle_core_i() {
                     // Allocate the node to the idle core
                     let node_data = ready_queue.pop_front().unwrap();
                     self.allocate_node(
@@ -221,7 +220,7 @@ pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
                     let current_time = self.get_current_time();
                     let processor = self.get_processor_mut();
                     // Preempted node data
-                    let preempted_node_data = processor.preempt(core_i).unwrap();
+                    let preempted_node_data = processor.preempt(core_i);
                     self.get_log_mut().write_job_event(
                         &preempted_node_data,
                         core_i,

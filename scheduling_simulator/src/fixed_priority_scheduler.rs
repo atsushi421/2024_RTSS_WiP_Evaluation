@@ -18,7 +18,7 @@ impl DAGSetSchedulerBase<HomogeneousProcessor> for FixedPriorityScheduler {
         Self {
             dag_set: dag_set.to_vec(),
             processor: processor.clone(),
-            log: DAGSetSchedulerLog::new(dag_set, processor.get_number_of_cores()),
+            log: DAGSetSchedulerLog::new(dag_set, processor.get_num_cores()),
             current_time: 0,
         }
     }

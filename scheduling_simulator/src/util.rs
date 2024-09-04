@@ -68,7 +68,7 @@ pub fn get_process_core_indices(process_result: &[ProcessResult]) -> Vec<usize> 
         .iter()
         .enumerate()
         .filter_map(|(index, result)| match result {
-            ProcessResult::Continue => Some(index),
+            ProcessResult::InProgress => Some(index),
             ProcessResult::Done(node_data) if !node_data.params.contains_key("dummy") => {
                 Some(index)
             }
@@ -164,7 +164,7 @@ mod tests {
             NodeData { id, params }
         }
         let process_result = vec![
-            ProcessResult::Continue,
+            ProcessResult::InProgress,
             ProcessResult::Done(create_node(0, "dummy", -1)),
             ProcessResult::Idle,
             ProcessResult::Done(create_node(1, "execution_time", 10)),

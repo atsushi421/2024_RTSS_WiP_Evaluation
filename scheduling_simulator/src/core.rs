@@ -1,7 +1,8 @@
 //! This module contains the definition of the core and the process result enum
+use core::panic;
+
 use crate::{core::ProcessResult::*, graph_extension::NodeData};
 use getset::{CopyGetters, Getters};
-use log::warn;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum ProcessResult {
@@ -59,19 +60,19 @@ impl Core {
         InProgress
     }
 
-    pub fn preempt(&mut self) -> Option<NodeData> {
+    pub fn preempt(&mut self) -> NodeData {
         if self.is_idle {
-            None
-        } else {
-            let mut node_data = self.processing_node.take().unwrap();
-            node_data
-                .params
-                .insert("execution_time".to_string(), self.remain_proc_time);
-            node_data.params.insert("is_preempted".to_string(), 1);
-            self.is_idle = true;
-            self.remain_proc_time = 0;
-            Some(node_data)
+            panic!("Although the core is idle, preempt is called");
         }
+
+        let mut node_data = self.processing_node.take().unwrap();
+        node_data
+            .params
+            .insert("execution_time".to_string(), self.remain_proc_time);
+        node_data.params.insert("is_preempted".to_string(), 1);
+        self.is_idle = true;
+        self.remain_proc_time = 0;
+        node_data
     }
 }
 
@@ -148,7 +149,7 @@ mod tests_core {
         core.allocate(&dummy_node);
         core.process();
 
-        let preempted_node = core.preempt().unwrap();
+        let preempted_node = core.preempt();
         assert_eq!(
             preempted_node.get_params_value("execution_time"),
             DUMMY_ET - 1
