@@ -6,7 +6,7 @@ use scheduling_simulator::{
         fixed_priority_scheduler::FixedPriorityScheduler,
         proposed_edf_scheduler::GlobalEDFScheduler,
     },
-    task::{dag::DAG, dag_creator::create_dag_set_from_dir},
+    task::{dag::DAG, dag_creator::create_dag_set_from_dir, dag_set::get_hyper_period},
 };
 
 #[derive(Clone, ValueEnum)]
@@ -36,13 +36,17 @@ fn main() {
     let arg: ArgParser = ArgParser::parse();
     let mut dag_set = create_dag_set_from_dir(&arg.dag_dir_path);
     let homogeneous_processor = HomogeneousProcessor::new(arg.number_of_cores);
+    let schedule_length = get_hyper_period(&dag_set);
 
     match arg.algorithm {
         Algorithm::ProposedEDF => {
             let mut scheduler = GlobalEDFScheduler::new(&dag_set, &homogeneous_processor);
-            scheduler.schedule(PreemptiveType::Preemptive {
-                key: "ref_absolute_deadline".to_string(),
-            });
+            scheduler.schedule(
+                PreemptiveType::Preemptive {
+                    key: "ref_absolute_deadline".to_string(),
+                },
+                schedule_length,
+            );
             scheduler.dump_log(&arg.output_dir_path, "proposed_edf");
         }
         Algorithm::RM => {
@@ -54,9 +58,12 @@ fn main() {
             }
 
             let mut scheduler = FixedPriorityScheduler::new(&dag_set, &homogeneous_processor);
-            scheduler.schedule(PreemptiveType::Preemptive {
-                key: "priority".to_string(),
-            });
+            scheduler.schedule(
+                PreemptiveType::Preemptive {
+                    key: "priority".to_string(),
+                },
+                schedule_length,
+            );
             scheduler.dump_log(&arg.output_dir_path, "rm");
         }
         Algorithm::Greedy => {
@@ -68,7 +75,7 @@ fn main() {
             }
 
             let mut scheduler = FixedPriorityScheduler::new(&dag_set, &homogeneous_processor);
-            scheduler.schedule(PreemptiveType::NonPreemptive);
+            scheduler.schedule(PreemptiveType::NonPreemptive, schedule_length);
             scheduler.dump_log(&arg.output_dir_path, "greedy");
         }
     }

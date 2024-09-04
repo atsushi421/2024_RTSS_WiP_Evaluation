@@ -1,10 +1,7 @@
 use crate::{
     log::DAGSetSchedulerLog,
     processor::{core::ProcessResult, processor_interface::Processor},
-    task::{
-        dag::{Node, DAG},
-        dag_set::get_hyper_period,
-    },
+    task::dag::{Node, DAG},
 };
 use petgraph::graph::Graph;
 use std::collections::VecDeque;
@@ -19,7 +16,7 @@ enum DAGState {
 
 /// This is associated with a single DAG.
 #[derive(Clone, Default)]
-struct DAGStateManager {
+pub struct DAGStateManager {
     dag_state: DAGState,
     release_count: i32,
 }
@@ -43,7 +40,7 @@ impl DAGStateManager {
     }
 }
 
-enum PreemptiveType {
+pub enum PreemptiveType {
     NonPreemptive,
     Preemptive { key: String },
 }
@@ -52,12 +49,10 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
     // getter, setter
     fn get_dag_set(&self) -> Vec<Graph<Node, i32>>;
     fn set_dag_set(&mut self, dag_set: Vec<Graph<Node, i32>>);
-    fn get_dag_set_mut(&mut self) -> &mut Vec<Graph<Node, i32>>;
-    fn get_processor_mut(&mut self) -> &mut T;
     fn get_processor(&self) -> &T;
+    fn get_processor_mut(&mut self) -> &mut T;
     fn get_log_mut(&mut self) -> &mut DAGSetSchedulerLog;
     fn get_current_time(&self) -> i32;
-    fn set_current_time(&mut self, current_time: i32);
     fn get_current_time_mut(&mut self) -> &mut i32;
 
     // method definition
@@ -67,84 +62,69 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
 
     // method implementation
     fn release_dags(&mut self, managers: &mut [DAGStateManager]) -> Vec<Node> {
-        let current_time = self.get_current_time();
         let mut ready_nodes = Vec::new();
+        let current_time = self.get_current_time();
         let mut dag_set = self.get_dag_set();
 
         for dag in dag_set.iter_mut() {
-            let dag_id = dag.get_dag_param("dag_id") as usize;
-            if (managers[dag_id].get_dag_state() == DAGState::Waiting)
-                && (current_time == dag.get_dag_period() * managers[dag_id].get_release_count())
+            let dag_i = dag.get_dag_param("dag_id") as usize;
+            if (managers[dag_i].get_dag_state() == DAGState::Waiting)
+                && (current_time == dag.get_dag_period() * managers[dag_i].get_release_count())
             {
-                managers[dag_id].release();
-                Self::update_params_when_release(dag, managers[dag_id].get_release_count());
-
+                managers[dag_i].release();
+                Self::update_params_when_release(dag, managers[dag_i].get_release_count());
                 ready_nodes.push(dag[dag.get_source()[0]].clone());
                 self.get_log_mut()
-                    .write_dag_release_time(dag_id, current_time);
+                    .write_dag_release_time(dag_i, current_time);
             }
         }
         self.set_dag_set(dag_set);
 
         ready_nodes
-    }
-
-    fn allocate_node(&mut self, node_data: &Node, core_id: usize, job_id: usize) {
-        self.get_processor_mut().allocate(core_id, node_data);
-        let current_time = self.get_current_time();
     }
 
     fn process_unit_time(&mut self) -> Vec<ProcessResult> {
-        self.set_current_time(self.get_current_time() + 1);
-        self.get_processor_mut().process()
+        let current_time = self.get_current_time_mut();
+        *current_time += 1;
+        let process_result = self.get_processor_mut().process();
+        self.get_log_mut().write_processing_time(&process_result);
+
+        process_result
     }
 
-    fn post_process_on_node_completion(
-        &mut self,
-        node: &Node,
-        core_id: usize,
-        managers: &mut [DAGStateManager],
-    ) -> Vec<Node> {
+    fn node_completion(&mut self, node: &Node, managers: &mut [DAGStateManager]) -> Vec<Node> {
         let mut dag_set = self.get_dag_set();
-        let current_time = self.get_current_time();
-        let log = self.get_log_mut();
-
         let dag_id = node.get_value("dag_id") as usize;
         let dag = &mut dag_set[dag_id];
+        let current_time = self.get_current_time();
 
-        let mut ready_nodes = Vec::new();
+        let mut triggered_nodes = Vec::new();
         let suc_nodes = dag.get_suc(node.get_id());
         if suc_nodes.is_empty() {
-            log.write_dag_finish_time(dag_id, current_time);
+            self.get_log_mut()
+                .write_dag_finish_time(dag_id, current_time);
             dag.set_param_to_all_nodes("pre_done_count", 0);
             managers[dag_id].complete_execution();
         } else {
-            for suc_node in suc_nodes {
-                if dag[suc_node].params.contains_key("pre_done_count") {
+            for suc in suc_nodes {
+                if dag[suc].params.contains_key("pre_done_count") {
                     dag.update_param(
-                        suc_node,
+                        suc,
                         "pre_done_count",
-                        dag[suc_node].get_value("pre_done_count") + 1,
+                        dag[suc].get_value("pre_done_count") + 1,
                     );
                 } else {
-                    dag.add_param(suc_node, "pre_done_count", 1);
+                    dag.add_param(suc, "pre_done_count", 1);
                 }
-                if dag.is_node_ready(suc_node) {
-                    ready_nodes.push(dag[suc_node].clone());
+                if dag.is_node_ready(suc) {
+                    triggered_nodes.push(dag[suc].clone());
                 }
             }
         }
 
         self.set_dag_set(dag_set);
 
-        ready_nodes
-    }
-
-    fn calculate_log(&mut self) {
-        let current_time = self.get_current_time();
-        let log = self.get_log_mut();
-        log.calculate_utilization(current_time);
-        log.calc_response_times();
+        triggered_nodes
     }
 
     fn can_preempt(
@@ -169,16 +149,21 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
         None
     }
 
-    fn schedule(&mut self, preemptive_type: PreemptiveType) -> i32 {
+    fn calculate_log(&mut self) {
+        let current_time = self.get_current_time();
+        let log = self.get_log_mut();
+        log.calculate_utilization(current_time);
+        log.calc_response_times();
+    }
+
+    fn schedule(&mut self, preemptive_type: PreemptiveType, duration: i32) -> i32 {
         // Start scheduling
         let mut managers = vec![DAGStateManager::default(); self.get_dag_set().len()];
         let mut ready_queue = VecDeque::new();
-        let hyper_period = get_hyper_period(&self.get_dag_set()); // TODO: change this duration
 
-        while self.get_current_time() < hyper_period {
+        while self.get_current_time() < duration {
             // Release DAGs
-            let ready_nodes = self.release_dags(&mut managers);
-            for ready_node in ready_nodes {
+            for ready_node in self.release_dags(&mut managers) {
                 ready_queue.push_back(ready_node);
             }
             self.sort_ready_queue(&mut ready_queue);
@@ -186,32 +171,15 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
             // Allocate nodes as long as there are idle cores, and attempt to preempt when all cores are busy.
             while !ready_queue.is_empty() {
                 if let Some(idle_core_i) = self.get_processor().get_idle_core_i() {
-                    // Allocate the node to the idle core
-                    let node_data = ready_queue.pop_front().unwrap();
-                    self.allocate_node(
-                        &node_data,
-                        idle_core_i,
-                        managers[node_data.get_value("dag_id") as usize].get_release_count()
-                            as usize,
-                    );
+                    self.get_processor_mut()
+                        .allocate(idle_core_i, &ready_queue.pop_front().unwrap());
                 } else if let Some(core_i) =
                     self.can_preempt(&preemptive_type, ready_queue.front().unwrap())
                 {
                     // Preempt the node with the lowest priority
-                    let current_time = self.get_current_time();
                     let processor = self.get_processor_mut();
-                    // Preempted node data
-                    let preempted_node_data = processor.preempt(core_i);
-                    // Allocate the preempted node
-                    let allocate_node_data = &ready_queue.pop_front().unwrap();
-                    self.allocate_node(
-                        allocate_node_data,
-                        core_i,
-                        managers[allocate_node_data.get_value("dag_id") as usize]
-                            .get_release_count() as usize,
-                    );
-                    // Insert the preempted node into the ready queue
-                    ready_queue.push_back(preempted_node_data);
+                    ready_queue.push_back(processor.preempt(core_i));
+                    processor.allocate(core_i, &ready_queue.pop_front().unwrap());
                     self.sort_ready_queue(&mut ready_queue);
                 } else {
                     break; // No core is idle and can not preempt. Exit the loop.
@@ -221,17 +189,11 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
             // Process unit time
             let process_result = self.process_unit_time();
 
-            // Write the processing time of the core to the log.
-            let log = self.get_log_mut();
-            log.write_processing_time(&process_result);
-
             // Post-process on completion of node execution
-            for (core_id, result) in process_result.iter().enumerate() {
+            for result in process_result.iter() {
                 if let ProcessResult::Done(node_data) = result {
-                    let ready_nodes =
-                        self.post_process_on_node_completion(node_data, core_id, &mut managers);
-                    for ready_node in ready_nodes {
-                        ready_queue.push_back(ready_node);
+                    for triggered_node in self.node_completion(node_data, &mut managers) {
+                        ready_queue.push_back(triggered_node);
                     }
                 }
             }
@@ -256,11 +218,11 @@ macro_rules! getset_dag_set_scheduler {
         fn set_dag_set(&mut self, dag_set: Vec<Graph<Node, i32>>){
             self.dag_set = dag_set;
         }
-        fn get_processor_mut(&mut self) -> &mut $t{
-            &mut self.processor
-        }
         fn get_processor(&self) -> &$t{
             &self.processor
+        }
+        fn get_processor_mut(&mut self) -> &mut $t{
+            &mut self.processor
         }
         fn get_log_mut(&mut self) -> &mut DAGSetSchedulerLog{
             &mut self.log
@@ -268,8 +230,8 @@ macro_rules! getset_dag_set_scheduler {
         fn get_current_time(&self) -> i32{
             self.current_time
         }
-        fn set_current_time(&mut self, current_time: i32){
-            self.current_time = current_time;
+        fn get_current_time_mut(&mut self) -> &mut i32{
+            &mut self.current_time
         }
     }
 }
