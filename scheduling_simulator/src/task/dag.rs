@@ -1,4 +1,3 @@
-use log::warn;
 use petgraph::{
     graph::{Graph, NodeIndex},
     visit::EdgeRef,
