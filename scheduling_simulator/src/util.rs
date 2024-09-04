@@ -1,6 +1,6 @@
 use crate::{
-    core::ProcessResult,
     graph_extension::{GraphExtension, NodeData},
+    processor::core::ProcessResult,
 };
 use chrono::{DateTime, Utc};
 use log::{info, warn};

@@ -1,11 +1,10 @@
 use crate::{
-    core::ProcessResult,
     graph_extension::{GraphExtension, NodeData},
     log::{DAGSetSchedulerLog, JobEventTimes},
-    processor::ProcessorBase,
+    processor::{core::ProcessResult, processor_interface::Processor},
     util::{create_scheduler_log_yaml, get_hyper_period, get_process_core_indices},
 };
-use petgraph::graph::{Graph, NodeIndex};
+use petgraph::graph::Graph;
 use std::collections::VecDeque;
 
 #[derive(Clone, Default, PartialEq)]
@@ -61,7 +60,7 @@ pub enum PreemptiveType {
     Preemptive { key: String },
 }
 
-pub trait DAGSetSchedulerBase<T: ProcessorBase + Clone> {
+pub trait DAGSetSchedulerBase<T: Processor + Clone> {
     // getter, setter
     fn get_dag_set(&self) -> Vec<Graph<NodeData, i32>>;
     fn set_dag_set(&mut self, dag_set: Vec<Graph<NodeData, i32>>);

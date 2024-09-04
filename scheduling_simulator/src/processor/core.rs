@@ -1,7 +1,8 @@
 //! This module contains the definition of the core and the process result enum
+use crate::processor::core::ProcessResult::{Done, Idle, InProgress};
 use core::panic;
 
-use crate::{core::ProcessResult::*, graph_extension::NodeData};
+use crate::graph_extension::NodeData;
 use getset::{CopyGetters, Getters};
 
 #[derive(Debug, PartialEq, Clone)]

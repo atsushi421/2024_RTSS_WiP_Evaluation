@@ -1,12 +1,14 @@
 //! Homogeneous processor module. This module uses Core struct.
-use crate::{core::Core, core::ProcessResult, graph_extension::NodeData, processor::ProcessorBase};
+
+use super::core::{Core, ProcessResult};
+use crate::{graph_extension::NodeData, processor::processor_interface::Processor};
 
 #[derive(Clone, Debug)]
 pub struct HomogeneousProcessor {
     pub cores: Vec<Core>,
 }
 
-impl ProcessorBase for HomogeneousProcessor {
+impl Processor for HomogeneousProcessor {
     fn new(num_cores: usize) -> Self {
         Self {
             cores: vec![Core::default(); num_cores],
@@ -58,7 +60,6 @@ impl ProcessorBase for HomogeneousProcessor {
 #[cfg(test)]
 mod tests_homogeneous_processor {
     use super::*;
-    use crate::{graph_extension::NodeData, processor::ProcessorBase};
     use std::collections::BTreeMap;
 
     fn create_node(key: &str, value: Option<i32>) -> NodeData {

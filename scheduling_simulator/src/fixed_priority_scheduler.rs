@@ -1,9 +1,8 @@
 use crate::dag_set_scheduler::DAGSetSchedulerBase;
 use crate::getset_dag_set_scheduler;
-use crate::{
-    graph_extension::NodeData, homogeneous::HomogeneousProcessor, log::DAGSetSchedulerLog,
-    processor::ProcessorBase,
-};
+use crate::processor::homogeneous::HomogeneousProcessor;
+use crate::processor::processor_interface::Processor;
+use crate::{graph_extension::NodeData, log::DAGSetSchedulerLog};
 use petgraph::graph::Graph;
 
 pub struct FixedPriorityScheduler {

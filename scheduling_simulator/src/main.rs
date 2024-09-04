@@ -4,8 +4,7 @@ use scheduling_simulator::{
     dag_set_scheduler::{DAGSetSchedulerBase, PreemptiveType},
     fixed_priority_scheduler::FixedPriorityScheduler,
     graph_extension::GraphExtension,
-    homogeneous::HomogeneousProcessor,
-    processor::ProcessorBase,
+    processor::{homogeneous::HomogeneousProcessor, processor_interface::Processor},
     proposed_edf_scheduler::GlobalEDFScheduler,
 };
 
