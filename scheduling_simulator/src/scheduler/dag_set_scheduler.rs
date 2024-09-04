@@ -50,6 +50,7 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
     fn set_dag_set(&mut self, dag_set: Vec<Graph<Node, i32>>);
     fn get_processor(&self) -> &T;
     fn get_processor_mut(&mut self) -> &mut T;
+    fn get_log(&self) -> &DAGSetSchedulerLog;
     fn get_log_mut(&mut self) -> &mut DAGSetSchedulerLog;
     fn get_current_time(&self) -> i32;
     fn get_current_time_mut(&mut self) -> &mut i32;
@@ -91,7 +92,11 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
         process_result
     }
 
-    fn node_completion(&mut self, node: &Node, managers: &mut [DAGStateManager]) -> Vec<Node> {
+    fn node_completion(
+        &mut self,
+        node: &Node,
+        managers: &mut [DAGStateManager],
+    ) -> Result<Vec<Node>, String> {
         let mut dag_set = self.get_dag_set();
         let dag_id = node.get_value("dag_id") as usize;
         let dag = &mut dag_set[dag_id];
@@ -100,8 +105,13 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
         let mut triggered_nodes = Vec::new();
         let suc_nodes = dag.get_suc(node.get_id());
         if suc_nodes.is_empty() {
-            self.get_log_mut()
+            let response_time = self
+                .get_log_mut()
                 .write_dag_finish_time(dag_id, current_time);
+            if response_time > dag.get_dag_param("relative_deadline") {
+                return Err("Deadline missed".to_string());
+            }
+
             dag.set_param_to_all_nodes("pre_done_count", 0);
             managers[dag_id].complete_execution();
         } else {
@@ -123,7 +133,7 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
 
         self.set_dag_set(dag_set);
 
-        triggered_nodes
+        Ok(triggered_nodes)
     }
 
     fn can_preempt(
@@ -160,7 +170,7 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
         let mut managers = vec![DAGStateManager::default(); self.get_dag_set().len()];
         let mut ready_queue = VecDeque::new();
 
-        while self.get_current_time() < duration {
+        'outer: while self.get_current_time() < duration {
             // Release DAGs
             for ready_node in self.release_dags(&mut managers) {
                 ready_queue.push_back(ready_node);
@@ -191,8 +201,12 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
             // Post-process on completion of node execution
             for result in process_result.iter() {
                 if let ProcessResult::Done(node_data) = result {
-                    for triggered_node in self.node_completion(node_data, &mut managers) {
-                        ready_queue.push_back(triggered_node);
+                    if let Ok(triggered_nodes) = self.node_completion(node_data, &mut managers) {
+                        for triggered_node in triggered_nodes {
+                            ready_queue.push_back(triggered_node);
+                        }
+                    } else {
+                        break 'outer; // Deadline missed
                     }
                 }
             }
@@ -222,6 +236,9 @@ macro_rules! dag_set_scheduler_common {
         }
         fn get_processor_mut(&mut self) -> &mut $t{
             &mut self.processor
+        }
+        fn get_log(&self) -> &DAGSetSchedulerLog{
+            &self.log
         }
         fn get_log_mut(&mut self) -> &mut DAGSetSchedulerLog{
             &mut self.log

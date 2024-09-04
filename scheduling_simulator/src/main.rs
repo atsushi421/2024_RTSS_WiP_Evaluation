@@ -35,12 +35,12 @@ struct ArgParser {
 fn main() {
     let arg: ArgParser = ArgParser::parse();
     let mut dag_set = create_dag_set_from_dir(&arg.dag_dir_path);
-    let homogeneous_processor = HomogeneousProcessor::new(arg.number_of_cores);
+    let processor = HomogeneousProcessor::new(arg.number_of_cores);
     let schedule_length = get_hyper_period(&dag_set);
 
     match arg.algorithm {
         Algorithm::ProposedEDF => {
-            let mut scheduler = GlobalEDFScheduler::new(&dag_set, &homogeneous_processor);
+            let mut scheduler = GlobalEDFScheduler::new(&dag_set, &processor);
             scheduler.schedule(
                 PreemptiveType::Preemptive {
                     key: "ref_absolute_deadline".to_string(),
@@ -57,7 +57,7 @@ fn main() {
                 }
             }
 
-            let mut scheduler = FixedPriorityScheduler::new(&dag_set, &homogeneous_processor);
+            let mut scheduler = FixedPriorityScheduler::new(&dag_set, &processor);
             scheduler.schedule(
                 PreemptiveType::Preemptive {
                     key: "priority".to_string(),
@@ -74,7 +74,7 @@ fn main() {
                 }
             }
 
-            let mut scheduler = FixedPriorityScheduler::new(&dag_set, &homogeneous_processor);
+            let mut scheduler = FixedPriorityScheduler::new(&dag_set, &processor);
             scheduler.schedule(PreemptiveType::NonPreemptive, schedule_length);
             scheduler.dump_log(&arg.output_dir_path, "greedy");
         }

@@ -13,11 +13,11 @@ use petgraph::Graph;
 use serde_derive::{Deserialize, Serialize};
 
 #[derive(Clone, Default, Serialize, Deserialize)]
-struct DAGLog {
+pub struct DAGLog {
     dag_id: usize,
     release_times: Vec<i32>,
     finish_times: Vec<i32>,
-    response_times: Vec<i32>,
+    pub response_times: Vec<i32>,
     best_response_time: i32,
     average_response_time: f32,
     worst_response_time: i32,
@@ -37,19 +37,6 @@ impl DAGLog {
     }
 
     pub fn calc_response_times(&mut self) {
-        // Unequal lengths indicate that the DAG was not completed within the hyper_period, and deadline miss occurred.
-        if self.release_times.len() != self.finish_times.len() {
-            // Mark as a deadline miss by maximizing the response time.
-            self.finish_times.push(std::i32::MAX);
-        }
-
-        self.response_times = self
-            .release_times
-            .iter()
-            .zip(self.finish_times.iter())
-            .map(|(release_time, finish_time)| *finish_time - *release_time)
-            .collect();
-
         self.best_response_time = *self.response_times.iter().min().unwrap();
         self.average_response_time =
             self.response_times.iter().sum::<i32>() as f32 / self.response_times.len() as f32;
@@ -79,7 +66,7 @@ impl CoreLog {
 }
 
 #[derive(Clone, Default, Serialize, Deserialize)]
-struct ProcessorLog {
+pub struct ProcessorLog {
     num_cores: usize,
     core_logs: Vec<CoreLog>,
     average_utilization: f32,
@@ -119,8 +106,8 @@ impl ProcessorLog {
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub struct DAGSetSchedulerLog {
-    dag_set_log: Vec<DAGLog>,
-    processor_log: ProcessorLog,
+    pub dag_set_log: Vec<DAGLog>,
+    pub processor_log: ProcessorLog,
 }
 
 impl DAGSetSchedulerLog {
@@ -140,8 +127,12 @@ impl DAGSetSchedulerLog {
         self.dag_set_log[dag_i].release_times.push(release_time);
     }
 
-    pub fn write_dag_finish_time(&mut self, dag_i: usize, finish_time: i32) {
+    pub fn write_dag_finish_time(&mut self, dag_i: usize, finish_time: i32) -> i32 {
         self.dag_set_log[dag_i].finish_times.push(finish_time);
+        let response_time = finish_time - self.dag_set_log[dag_i].release_times.last().unwrap();
+        self.dag_set_log[dag_i].response_times.push(response_time);
+
+        response_time
     }
 
     pub fn write_processing_time(&mut self, process_result: &[ProcessResult]) {
