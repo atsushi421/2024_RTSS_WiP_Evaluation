@@ -1,5 +1,5 @@
 use crate::{
-    log::{create_scheduler_log_yaml, DAGSetSchedulerLog, JobEventTimes},
+    log::DAGSetSchedulerLog,
     processor::{core::ProcessResult, processor_interface::Processor},
     task::{
         dag::{Node, DAG},
@@ -118,8 +118,6 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
     fn allocate_node(&mut self, node_data: &Node, core_id: usize, job_id: usize) {
         self.get_processor_mut().allocate(core_id, node_data);
         let current_time = self.get_current_time();
-        self.get_log_mut()
-            .write_allocating_job(node_data, core_id, job_id, current_time)
     }
 
     fn process_unit_time(&mut self) -> Vec<ProcessResult> {
@@ -137,12 +135,6 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
         let current_time = self.get_current_time();
         let log = self.get_log_mut();
 
-        log.write_job_event(
-            node,
-            core_id,
-            (managers[node.get_value("dag_id") as usize].get_release_count() - 1) as usize,
-            JobEventTimes::FinishTime(current_time),
-        );
         let dag_id = node.get_value("dag_id") as usize;
         let dag = &mut dag_set[dag_id];
 
@@ -178,7 +170,7 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
         let current_time = self.get_current_time();
         let log = self.get_log_mut();
         log.calculate_utilization(current_time);
-        log.calculate_response_time();
+        log.calc_response_times();
     }
 
     fn can_preempt(
@@ -236,14 +228,6 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
                     let processor = self.get_processor_mut();
                     // Preempted node data
                     let preempted_node_data = processor.preempt(core_i);
-                    self.get_log_mut().write_job_event(
-                        &preempted_node_data,
-                        core_i,
-                        (managers[preempted_node_data.get_value("dag_id") as usize]
-                            .get_release_count() as usize)
-                            - 1,
-                        JobEventTimes::PreemptedTime(current_time),
-                    );
                     // Allocate the preempted node
                     let allocate_node_data = &ready_queue.pop_front().unwrap();
                     self.allocate_node(
@@ -285,11 +269,8 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
         self.get_current_time()
     }
 
-    fn dump_log(&mut self, dir_path: &str, alg_name: &str) -> String {
-        let file_path = create_scheduler_log_yaml(dir_path, alg_name);
-        self.get_log_mut().dump_log_to_yaml(&file_path);
-
-        file_path
+    fn dump_log(&mut self, dir_path: &str, alg_name: &str) {
+        self.get_log_mut().dump_to_yaml(dir_path, alg_name);
     }
 }
 
