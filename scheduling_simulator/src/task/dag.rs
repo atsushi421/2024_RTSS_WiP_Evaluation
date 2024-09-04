@@ -33,6 +33,7 @@ impl Node {
 pub trait DAG {
     fn add_param(&mut self, node_i: NodeIndex, key: &str, value: i32);
     fn update_param(&mut self, node_i: NodeIndex, key: &str, value: i32);
+    fn set_param(&mut self, node_i: NodeIndex, key: &str, value: i32);
     fn get_source(&self) -> Vec<NodeIndex>;
     fn get_sink(&self) -> Vec<NodeIndex>;
     fn get_dag_period(&self) -> i32;
@@ -62,6 +63,11 @@ impl DAG for Graph<Node, i32> {
         } else {
             target_node.params.insert(key.to_string(), value);
         }
+    }
+
+    fn set_param(&mut self, node_i: NodeIndex, key: &str, value: i32) {
+        let target_node = self.node_weight_mut(node_i).unwrap();
+        target_node.params.insert(key.to_string(), value);
     }
 
     fn get_source(&self) -> Vec<NodeIndex> {

@@ -20,6 +20,15 @@ impl Processor for HomogeneousProcessor {
     }
 
     fn process(&mut self) -> Vec<ProcessResult> {
+        #[cfg(debug_assertions)]
+        {
+            for (i, core) in self.cores.iter().enumerate() {
+                if !core.is_idle {
+                    println!("[Core {}]: Processing Node: {:?}", i, core.processing_node);
+                }
+            }
+        }
+
         self.cores.iter_mut().map(|core| core.process()).collect()
     }
 
