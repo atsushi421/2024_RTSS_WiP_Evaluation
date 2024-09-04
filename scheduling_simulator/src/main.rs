@@ -1,13 +1,12 @@
 use clap::{Parser, ValueEnum};
 use scheduling_simulator::{
-    dag_creator::create_dag_set_from_dir,
-    graph_extension::GraphExtension,
     processor::{homogeneous::HomogeneousProcessor, processor_interface::Processor},
     scheduler::{
         dag_set_scheduler::{DAGSetSchedulerBase, PreemptiveType},
         fixed_priority_scheduler::FixedPriorityScheduler,
         proposed_edf_scheduler::GlobalEDFScheduler,
     },
+    task::{dag_creator::create_dag_set_from_dir, graph_extension::GraphExtension},
 };
 
 #[derive(Clone, ValueEnum)]

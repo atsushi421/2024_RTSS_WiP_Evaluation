@@ -1,4 +1,4 @@
-use crate::graph_extension::NodeData;
+use crate::task::graph_extension::NodeData;
 
 use super::core::ProcessResult;
 

@@ -1,7 +1,7 @@
 //! Homogeneous processor module. This module uses Core struct.
 
 use super::core::{Core, ProcessResult};
-use crate::{graph_extension::NodeData, processor::processor_interface::Processor};
+use crate::{processor::processor_interface::Processor, task::graph_extension::NodeData};
 
 #[derive(Clone, Debug)]
 pub struct HomogeneousProcessor {

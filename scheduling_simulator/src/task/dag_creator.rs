@@ -1,10 +1,11 @@
 //! Generate a petgraph DAG object from a yaml file
-use crate::graph_extension::{GraphExtension, NodeData};
 use crate::util::load_yaml;
 
 use petgraph::{graph::Graph, prelude::*};
 use std::{collections::BTreeMap, path::PathBuf};
 use yaml_rust::Yaml;
+
+use super::graph_extension::{GraphExtension, NodeData};
 
 pub fn create_dag_from_yaml(file_path: &str) -> Graph<NodeData, i32> {
     let yaml_docs = load_yaml(file_path);

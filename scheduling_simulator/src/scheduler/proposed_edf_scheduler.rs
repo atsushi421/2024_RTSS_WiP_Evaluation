@@ -1,8 +1,8 @@
 use crate::getset_dag_set_scheduler;
-use crate::graph_extension::GraphExtension;
+use crate::log::DAGSetSchedulerLog;
 use crate::processor::homogeneous::HomogeneousProcessor;
 use crate::processor::processor_interface::Processor;
-use crate::{graph_extension::NodeData, log::DAGSetSchedulerLog};
+use crate::task::graph_extension::{GraphExtension, NodeData};
 use petgraph::graph::Graph;
 use std::cmp::Ordering;
 use std::collections::VecDeque;
@@ -84,7 +84,6 @@ impl DAGSetSchedulerBase<HomogeneousProcessor> for GlobalEDFScheduler {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::graph_extension::GraphExtension;
     use crate::scheduler::dag_set_scheduler::PreemptiveType;
     use crate::util::approx_eq;
     use crate::util::load_yaml;
