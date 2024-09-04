@@ -4,7 +4,7 @@ use petgraph::{graph::Graph, prelude::*};
 use std::{collections::BTreeMap, fs, path::PathBuf};
 use yaml_rust::{Yaml, YamlLoader};
 
-use super::dag::{NodeData, DAG};
+use super::dag::{Node, DAG};
 
 fn load_yaml(path: &str) -> Vec<Yaml> {
     if !path.ends_with(".yaml") && !path.ends_with(".yml") {
@@ -13,9 +13,9 @@ fn load_yaml(path: &str) -> Vec<Yaml> {
     YamlLoader::load_from_str(&fs::read_to_string(path).unwrap()).unwrap()
 }
 
-fn create_dag_from_yaml(path: &str) -> Graph<NodeData, i32> {
+fn create_dag_from_yaml(path: &str) -> Graph<Node, i32> {
     let content = &load_yaml(path)[0];
-    let mut dag = Graph::<NodeData, i32>::new();
+    let mut dag = Graph::<Node, i32>::new();
 
     // Load nodes
     let nodes = content["nodes"]
@@ -45,7 +45,7 @@ fn create_dag_from_yaml(path: &str) -> Graph<NodeData, i32> {
             }
         }
 
-        dag.add_node(NodeData { id, params });
+        dag.add_node(Node { id, params });
     }
 
     // Load edges
@@ -87,11 +87,11 @@ fn get_yaml_paths_from_dir(dir_path: &str) -> Vec<String> {
     yaml_paths
 }
 
-pub fn create_dag_set_from_dir(dir_path: &str) -> Vec<Graph<NodeData, i32>> {
+pub fn create_dag_set_from_dir(dir_path: &str) -> Vec<Graph<Node, i32>> {
     let mut yaml_paths = get_yaml_paths_from_dir(dir_path);
     yaml_paths.sort();
 
-    let mut dag_set: Vec<Graph<NodeData, i32>> = Vec::new();
+    let mut dag_set: Vec<Graph<Node, i32>> = Vec::new();
     for (dag_id, path) in yaml_paths.iter().enumerate() {
         let mut dag = create_dag_from_yaml(path);
         dag.set_param_to_all_nodes("dag_id", dag_id as i32);

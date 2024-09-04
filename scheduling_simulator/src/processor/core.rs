@@ -1,7 +1,7 @@
 //! This module contains the definition of the core and the process result enum
 use crate::{
     processor::core::ProcessResult::{Done, Idle, InProgress},
-    task::dag::NodeData,
+    task::dag::Node,
 };
 use core::panic;
 
@@ -11,7 +11,7 @@ use getset::{CopyGetters, Getters};
 pub enum ProcessResult {
     Idle,
     InProgress,
-    Done(NodeData),
+    Done(Node),
 }
 
 #[derive(Clone, CopyGetters, Getters, Debug)]
@@ -19,7 +19,7 @@ pub struct Core {
     #[get_copy = "pub with_prefix"]
     pub is_idle: bool,
     #[get = "pub with_prefix"]
-    pub processing_node: Option<NodeData>,
+    pub processing_node: Option<Node>,
     pub remain_proc_time: i32,
 }
 
@@ -34,7 +34,7 @@ impl Default for Core {
 }
 
 impl Core {
-    pub fn allocate(&mut self, node: &NodeData) {
+    pub fn allocate(&mut self, node: &Node) {
         if !self.is_idle {
             panic!("The node is already allocated");
         }
@@ -63,7 +63,7 @@ impl Core {
         InProgress
     }
 
-    pub fn preempt(&mut self) -> NodeData {
+    pub fn preempt(&mut self) -> Node {
         if self.is_idle {
             panic!("Although the core is idle, preempt is called");
         }
@@ -84,10 +84,10 @@ mod tests_core {
     use super::*;
     use std::collections::BTreeMap;
 
-    fn create_node(key: &str, value: Option<i32>) -> NodeData {
+    fn create_node(key: &str, value: Option<i32>) -> Node {
         let mut params = BTreeMap::new();
         params.insert(key.to_string(), value.unwrap_or_default());
-        NodeData { id: 0, params }
+        Node { id: 0, params }
     }
 
     #[test]

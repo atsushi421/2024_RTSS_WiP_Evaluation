@@ -1,6 +1,6 @@
 use crate::{
     processor::core::ProcessResult,
-    task::dag::{NodeData, DAG},
+    task::dag::{Node, DAG},
 };
 use chrono::{DateTime, Utc};
 use log::{info, warn};
@@ -11,7 +11,7 @@ use std::{
     io::Write,
 };
 
-pub fn get_hyper_period(dag_set: &[Graph<NodeData, i32>]) -> i32 {
+pub fn get_hyper_period(dag_set: &[Graph<Node, i32>]) -> i32 {
     let mut hyper_period = 1;
     for dag in dag_set {
         let dag_period = dag.get_head_period().unwrap();
@@ -78,58 +78,58 @@ mod tests {
     use super::*;
     use std::collections::BTreeMap;
 
-    fn create_dag() -> Graph<NodeData, i32> {
-        let mut dag = Graph::<NodeData, i32>::new();
+    fn create_dag() -> Graph<Node, i32> {
+        let mut dag = Graph::<Node, i32>::new();
         let mut params = BTreeMap::new();
         params.insert("execution_time".to_owned(), 4);
-        dag.add_node(NodeData { id: 0, params });
+        dag.add_node(Node { id: 0, params });
 
         dag
     }
 
-    fn create_dag_with_period(period: i32) -> Graph<NodeData, i32> {
-        let mut dag = Graph::<NodeData, i32>::new();
+    fn create_dag_with_period(period: i32) -> Graph<Node, i32> {
+        let mut dag = Graph::<Node, i32>::new();
         let mut params = BTreeMap::new();
         params.insert("execution_time".to_owned(), 4);
         params.insert("period".to_owned(), period);
-        let n0 = dag.add_node(NodeData { id: 0, params });
+        let n0 = dag.add_node(Node { id: 0, params });
 
         params = BTreeMap::new();
         params.insert("execution_time".to_owned(), 4);
-        let n1 = dag.add_node(NodeData { id: 1, params });
+        let n1 = dag.add_node(Node { id: 1, params });
 
         dag.add_edge(n0, n1, 0);
 
         dag
     }
 
-    fn create_dag_with_deadline(deadline: i32) -> Graph<NodeData, i32> {
-        let mut dag = Graph::<NodeData, i32>::new();
+    fn create_dag_with_deadline(deadline: i32) -> Graph<Node, i32> {
+        let mut dag = Graph::<Node, i32>::new();
         let mut params = BTreeMap::new();
         params.insert("execution_time".to_owned(), 4);
-        let n0 = dag.add_node(NodeData { id: 0, params });
+        let n0 = dag.add_node(Node { id: 0, params });
 
         params = BTreeMap::new();
         params.insert("execution_time".to_owned(), 4);
         params.insert("end_to_end_deadline".to_owned(), deadline);
-        let n1 = dag.add_node(NodeData { id: 1, params });
+        let n1 = dag.add_node(Node { id: 1, params });
 
         dag.add_edge(n0, n1, 0);
 
         dag
     }
 
-    fn create_dag_with_period_and_deadline(period: i32, deadline: i32) -> Graph<NodeData, i32> {
-        let mut dag = Graph::<NodeData, i32>::new();
+    fn create_dag_with_period_and_deadline(period: i32, deadline: i32) -> Graph<Node, i32> {
+        let mut dag = Graph::<Node, i32>::new();
         let mut params = BTreeMap::new();
         params.insert("execution_time".to_owned(), 4);
         params.insert("period".to_owned(), period);
-        let n0 = dag.add_node(NodeData { id: 0, params });
+        let n0 = dag.add_node(Node { id: 0, params });
 
         params = BTreeMap::new();
         params.insert("execution_time".to_owned(), 4);
         params.insert("end_to_end_deadline".to_owned(), deadline);
-        let n1 = dag.add_node(NodeData { id: 1, params });
+        let n1 = dag.add_node(Node { id: 1, params });
 
         dag.add_edge(n0, n1, 0);
 
@@ -149,10 +149,10 @@ mod tests {
 
     #[test]
     fn test_get_process_core_indices_normal() {
-        fn create_node(id: i32, key: &str, value: i32) -> NodeData {
+        fn create_node(id: i32, key: &str, value: i32) -> Node {
             let mut params = BTreeMap::new();
             params.insert(key.to_string(), value);
-            NodeData { id, params }
+            Node { id, params }
         }
         let process_result = vec![
             ProcessResult::InProgress,

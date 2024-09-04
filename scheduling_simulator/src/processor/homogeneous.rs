@@ -1,7 +1,7 @@
 //! Homogeneous processor module. This module uses Core struct.
 
 use super::core::{Core, ProcessResult};
-use crate::{processor::processor_interface::Processor, task::dag::NodeData};
+use crate::{processor::processor_interface::Processor, task::dag::Node};
 
 #[derive(Clone, Debug)]
 pub struct HomogeneousProcessor {
@@ -15,7 +15,7 @@ impl Processor for HomogeneousProcessor {
         }
     }
 
-    fn allocate(&mut self, core_id: usize, node: &NodeData) {
+    fn allocate(&mut self, core_id: usize, node: &Node) {
         self.cores[core_id].allocate(node)
     }
 
@@ -40,7 +40,7 @@ impl Processor for HomogeneousProcessor {
         None
     }
 
-    fn preempt(&mut self, core_id: usize) -> NodeData {
+    fn preempt(&mut self, core_id: usize) -> Node {
         self.cores[core_id].preempt()
     }
 
@@ -62,10 +62,10 @@ mod tests_homogeneous_processor {
     use super::*;
     use std::collections::BTreeMap;
 
-    fn create_node(key: &str, value: Option<i32>) -> NodeData {
+    fn create_node(key: &str, value: Option<i32>) -> Node {
         let mut params = BTreeMap::new();
         params.insert(key.to_string(), value.unwrap_or_default());
-        NodeData { id: 0, params }
+        Node { id: 0, params }
     }
 
     #[test]

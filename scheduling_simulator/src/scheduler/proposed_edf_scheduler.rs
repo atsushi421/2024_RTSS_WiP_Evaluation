@@ -2,7 +2,7 @@ use crate::getset_dag_set_scheduler;
 use crate::log::DAGSetSchedulerLog;
 use crate::processor::homogeneous::HomogeneousProcessor;
 use crate::processor::processor_interface::Processor;
-use crate::task::dag::{NodeData, DAG};
+use crate::task::dag::{Node, DAG};
 use petgraph::graph::Graph;
 use std::cmp::Ordering;
 use std::collections::VecDeque;
@@ -10,14 +10,14 @@ use std::collections::VecDeque;
 use super::dag_set_scheduler::DAGSetSchedulerBase;
 
 pub struct GlobalEDFScheduler {
-    dag_set: Vec<Graph<NodeData, i32>>,
+    dag_set: Vec<Graph<Node, i32>>,
     processor: HomogeneousProcessor,
     log: DAGSetSchedulerLog,
     current_time: i32,
 }
 
 impl DAGSetSchedulerBase<HomogeneousProcessor> for GlobalEDFScheduler {
-    fn new(dag_set: &[Graph<NodeData, i32>], processor: &HomogeneousProcessor) -> Self {
+    fn new(dag_set: &[Graph<Node, i32>], processor: &HomogeneousProcessor) -> Self {
         Self {
             dag_set: dag_set.to_vec(),
             processor: processor.clone(),
@@ -26,7 +26,7 @@ impl DAGSetSchedulerBase<HomogeneousProcessor> for GlobalEDFScheduler {
         }
     }
 
-    fn update_params_when_release(dag: &mut Graph<NodeData, i32>, job_id: i32) {
+    fn update_params_when_release(dag: &mut Graph<Node, i32>, job_id: i32) {
         let sink_nodes = dag.get_sink_nodes();
 
         // Assign ref_absolute_deadline to sink nodes.
@@ -59,7 +59,7 @@ impl DAGSetSchedulerBase<HomogeneousProcessor> for GlobalEDFScheduler {
         }
     }
 
-    fn sort_ready_queue(&self, ready_queue: &mut VecDeque<NodeData>) {
+    fn sort_ready_queue(&self, ready_queue: &mut VecDeque<Node>) {
         ready_queue.make_contiguous().sort_by(|a, b| {
             match a
                 .get_params_value("ref_absolute_deadline")

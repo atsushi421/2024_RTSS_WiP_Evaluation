@@ -1,4 +1,4 @@
-use crate::{task::dag::NodeData, util::append_info_to_yaml};
+use crate::{task::dag::Node, util::append_info_to_yaml};
 use petgraph::Graph;
 use serde::Serialize;
 use serde_derive::{Deserialize, Serialize};
@@ -178,7 +178,7 @@ pub struct DAGSetSchedulerLog {
 }
 
 impl DAGSetSchedulerLog {
-    pub fn new(dag_set: &[Graph<NodeData, i32>], num_cores: usize) -> Self {
+    pub fn new(dag_set: &[Graph<Node, i32>], num_cores: usize) -> Self {
         let mut dag_set_log = Vec::with_capacity(dag_set.len());
         for i in 0..dag_set.len() {
             dag_set_log.push(DAGLog::new(i));
@@ -202,7 +202,7 @@ impl DAGSetSchedulerLog {
 
     pub fn write_allocating_job(
         &mut self,
-        node_data: &NodeData,
+        node_data: &Node,
         core_id: usize,
         job_id: usize,
         current_time: i32,
@@ -226,7 +226,7 @@ impl DAGSetSchedulerLog {
 
     pub fn write_job_event(
         &mut self,
-        node_data: &NodeData,
+        node_data: &Node,
         core_id: usize,
         job_id: usize,
         event_time: JobEventTimes,

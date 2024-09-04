@@ -1,7 +1,7 @@
 use crate::{
     log::{DAGSetSchedulerLog, JobEventTimes},
     processor::{core::ProcessResult, processor_interface::Processor},
-    task::dag::{NodeData, DAG},
+    task::dag::{Node, DAG},
     util::{create_scheduler_log_yaml, get_hyper_period, get_process_core_indices},
 };
 use petgraph::graph::Graph;
@@ -62,8 +62,8 @@ pub enum PreemptiveType {
 
 pub trait DAGSetSchedulerBase<T: Processor + Clone> {
     // getter, setter
-    fn get_dag_set(&self) -> Vec<Graph<NodeData, i32>>;
-    fn set_dag_set(&mut self, dag_set: Vec<Graph<NodeData, i32>>);
+    fn get_dag_set(&self) -> Vec<Graph<Node, i32>>;
+    fn set_dag_set(&mut self, dag_set: Vec<Graph<Node, i32>>);
     fn get_processor_mut(&mut self) -> &mut T;
     fn get_processor(&self) -> &T;
     fn get_log_mut(&mut self) -> &mut DAGSetSchedulerLog;
@@ -71,12 +71,12 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
     fn set_current_time(&mut self, current_time: i32);
 
     // method definition
-    fn new(dag_set: &[Graph<NodeData, i32>], processor: &T) -> Self;
-    fn sort_ready_queue(&self, ready_queue: &mut VecDeque<NodeData>);
-    fn update_params_when_release(dag: &mut Graph<NodeData, i32>, job_id: i32);
+    fn new(dag_set: &[Graph<Node, i32>], processor: &T) -> Self;
+    fn sort_ready_queue(&self, ready_queue: &mut VecDeque<Node>);
+    fn update_params_when_release(dag: &mut Graph<Node, i32>, job_id: i32);
 
     // method implementation
-    fn release_dags(&mut self, managers: &mut [impl DAGStateManagerBase]) -> Vec<NodeData> {
+    fn release_dags(&mut self, managers: &mut [impl DAGStateManagerBase]) -> Vec<Node> {
         let current_time = self.get_current_time();
         let mut ready_nodes = Vec::new();
         let mut dag_set = self.get_dag_set();
@@ -100,7 +100,7 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
         ready_nodes
     }
 
-    fn allocate_node(&mut self, node_data: &NodeData, core_id: usize, job_id: usize) {
+    fn allocate_node(&mut self, node_data: &Node, core_id: usize, job_id: usize) {
         self.get_processor_mut().allocate(core_id, node_data);
         let current_time = self.get_current_time();
         self.get_log_mut()
@@ -114,10 +114,10 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
 
     fn post_process_on_node_completion(
         &mut self,
-        node: &NodeData,
+        node: &Node,
         core_id: usize,
         managers: &mut [impl DAGStateManagerBase],
-    ) -> Vec<NodeData> {
+    ) -> Vec<Node> {
         let mut dag_set = self.get_dag_set();
         let current_time = self.get_current_time();
         let log = self.get_log_mut();
@@ -168,7 +168,7 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
     fn can_preempt(
         &self,
         preemptive_type: &PreemptiveType,
-        ready_head_node: &NodeData,
+        ready_head_node: &Node,
     ) -> Option<usize> {
         if let PreemptiveType::Preemptive {
             key: preemptive_key,
@@ -280,10 +280,10 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
 #[macro_export]
 macro_rules! getset_dag_set_scheduler {
     { $t:ty } => {
-        fn get_dag_set(&self) -> Vec<Graph<NodeData, i32>>{
+        fn get_dag_set(&self) -> Vec<Graph<Node, i32>>{
             self.dag_set.clone()
         }
-        fn set_dag_set(&mut self, dag_set: Vec<Graph<NodeData, i32>>){
+        fn set_dag_set(&mut self, dag_set: Vec<Graph<Node, i32>>){
             self.dag_set = dag_set;
         }
         fn get_processor_mut(&mut self) -> &mut $t{
