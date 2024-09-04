@@ -3,12 +3,10 @@ use crate::{core::ProcessResult::*, graph_extension::NodeData};
 use getset::{CopyGetters, Getters};
 use log::warn;
 
-/// enum to represent three types of states
-/// execution not possible because not allocate, execution in progress, execution finished
 #[derive(Debug, PartialEq, Clone)]
 pub enum ProcessResult {
     Idle,
-    Continue,
+    InProgress,
     Done(NodeData),
 }
 
@@ -31,21 +29,18 @@ impl Default for Core {
     }
 }
 
-/// return bool since "panic!" would terminate
 impl Core {
-    pub fn allocate(&mut self, node_data: &NodeData) -> bool {
+    pub fn allocate(&mut self, node: &NodeData) {
         if !self.is_idle {
-            warn!("Core is already allocated to a node");
-            return false;
+            panic!("The node is already allocated");
         }
+
         self.is_idle = false;
-        self.processing_node = Some(node_data.clone());
-        if let Some(exec_time) = node_data.params.get("execution_time") {
+        self.processing_node = Some(node.clone());
+        if let Some(exec_time) = node.params.get("execution_time") {
             self.remain_proc_time = *exec_time;
-            true
         } else {
-            warn!("Node {} does not have execution_time", node_data.id);
-            false
+            panic!("Node {} does not have execution_time", node.id);
         }
     }
 
@@ -53,27 +48,27 @@ impl Core {
         if self.is_idle {
             return Idle;
         }
+
         self.remain_proc_time -= 1;
         if self.remain_proc_time == 0 {
             self.is_idle = true;
-            let finish_node_data = self.processing_node.clone().unwrap();
-            self.processing_node = None;
+            let finish_node_data = self.processing_node.take().unwrap();
             return Done(finish_node_data);
         }
-        Continue
+
+        InProgress
     }
 
     pub fn preempt(&mut self) -> Option<NodeData> {
         if self.is_idle {
             None
         } else {
-            let mut node_data = self.processing_node.clone().unwrap();
+            let mut node_data = self.processing_node.take().unwrap();
             node_data
                 .params
                 .insert("execution_time".to_string(), self.remain_proc_time);
             node_data.params.insert("is_preempted".to_string(), 1);
             self.is_idle = true;
-            self.processing_node = None;
             self.remain_proc_time = 0;
             Some(node_data)
         }
@@ -81,71 +76,84 @@ impl Core {
 }
 
 #[cfg(test)]
-mod tests {
+mod tests_core {
     use super::*;
     use std::collections::BTreeMap;
 
-    fn create_node(id: i32, key: &str, value: i32) -> NodeData {
+    fn create_node(key: &str, value: Option<i32>) -> NodeData {
         let mut params = BTreeMap::new();
-        params.insert(key.to_string(), value);
-        NodeData { id, params }
+        params.insert(key.to_string(), value.unwrap_or_default());
+        NodeData { id: 0, params }
     }
 
     #[test]
-    fn test_core_default_params() {
-        let core = Core::default();
+    fn test_allocate_normal() {
+        const DUMMY_ET: i32 = 10;
+        let dummy_node = create_node("execution_time", Some(DUMMY_ET));
+        let mut core = Core::default();
+
+        core.allocate(&dummy_node);
+        assert!(!core.is_idle);
+        assert_eq!(core.processing_node, Some(dummy_node));
+        assert_eq!(core.remain_proc_time, DUMMY_ET);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_allocate_already_allocated() {
+        let mut core = Core::default();
+        core.allocate(&create_node("execution_time", None));
+        core.allocate(&create_node("execution_time", None));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_allocate_node_no_has_execution_time() {
+        let mut core = Core::default();
+        core.allocate(&create_node("no_execution_time", None));
+    }
+
+    #[test]
+    fn test_process_in_progress() {
+        const DUMMY_ET: i32 = 10;
+        let mut core = Core::default();
+        core.allocate(&create_node("execution_time", Some(DUMMY_ET)));
+        assert_eq!(core.process(), InProgress);
+        assert_eq!(core.remain_proc_time, DUMMY_ET - 1);
+    }
+
+    #[test]
+    fn test_process_idle() {
+        let mut core = Core::default();
+        assert_eq!(core.process(), Idle);
+    }
+
+    #[test]
+    fn test_process_done() {
+        let dummy_node = create_node("execution_time", Some(1));
+        let mut core = Core::default();
+        core.allocate(&dummy_node);
+        assert_eq!(core.process(), Done(dummy_node));
         assert!(core.is_idle);
         assert_eq!(core.processing_node, None);
         assert_eq!(core.remain_proc_time, 0);
     }
 
     #[test]
-    fn test_core_allocate_normal() {
+    fn test_preempt() {
+        const DUMMY_ET: i32 = 10;
+        let dummy_node = create_node("execution_time", Some(DUMMY_ET));
         let mut core = Core::default();
-        core.allocate(&create_node(0, "execution_time", 10));
-        assert!(!core.is_idle);
+
+        core.allocate(&dummy_node);
+        core.process();
+
+        let preempted_node = core.preempt().unwrap();
         assert_eq!(
-            core.processing_node,
-            Some(create_node(0, "execution_time", 10))
+            preempted_node.get_params_value("execution_time"),
+            DUMMY_ET - 1
         );
-        assert_eq!(core.remain_proc_time, 10);
-    }
-
-    #[test]
-    fn test_core_allocate_already_allocated() {
-        let mut core = Core::default();
-        core.allocate(&create_node(0, "execution_time", 10));
-        assert!(!core.allocate(&create_node(1, "execution_time", 10)));
-    }
-
-    #[test]
-    fn test_core_allocate_node_no_has_execution_time() {
-        let mut core = Core::default();
-        assert!(!core.allocate(&create_node(0, "no_execution_time", 10)));
-    }
-
-    #[test]
-    fn test_core_process_normal() {
-        let mut core = Core::default();
-        core.allocate(&create_node(0, "execution_time", 10));
-        assert_eq!(core.process(), Continue);
-        assert_eq!(core.remain_proc_time, 9);
-        core.process();
-        assert_eq!(core.remain_proc_time, 8);
-    }
-
-    #[test]
-    fn test_core_process_no_allocated() {
-        let mut core = Core::default();
-        assert_eq!(core.process(), Idle);
-    }
-
-    #[test]
-    fn test_core_process_when_finished() {
-        let mut core = Core::default();
-        core.allocate(&create_node(0, "execution_time", 2));
-        core.process();
-        assert_eq!(core.process(), Done(create_node(0, "execution_time", 2)));
+        assert_eq!(preempted_node.get_params_value("is_preempted"), 1);
         assert!(core.is_idle);
         assert_eq!(core.processing_node, None);
         assert_eq!(core.remain_proc_time, 0);
