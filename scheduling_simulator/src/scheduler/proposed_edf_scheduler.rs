@@ -1,4 +1,4 @@
-use crate::getset_dag_set_scheduler;
+use crate::dag_set_scheduler_common;
 use crate::log::DAGSetSchedulerLog;
 use crate::processor::homogeneous::HomogeneousProcessor;
 use crate::processor::processor_interface::Processor;
@@ -17,15 +17,6 @@ pub struct GlobalEDFScheduler {
 }
 
 impl DAGSetSchedulerBase<HomogeneousProcessor> for GlobalEDFScheduler {
-    fn new(dag_set: &[Graph<Node, i32>], processor: &HomogeneousProcessor) -> Self {
-        Self {
-            dag_set: dag_set.to_vec(),
-            processor: processor.clone(),
-            log: DAGSetSchedulerLog::new(dag_set, processor.get_num_cores()),
-            current_time: 0,
-        }
-    }
-
     fn update_params_when_release(dag: &mut Graph<Node, i32>, job_id: i32) {
         let sink_nodes = dag.get_sink();
 
@@ -74,7 +65,7 @@ impl DAGSetSchedulerBase<HomogeneousProcessor> for GlobalEDFScheduler {
         });
     }
 
-    getset_dag_set_scheduler!(HomogeneousProcessor);
+    dag_set_scheduler_common!(HomogeneousProcessor);
 }
 
 // #[cfg(test)]

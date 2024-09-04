@@ -11,7 +11,6 @@ enum DAGState {
     #[default]
     Waiting,
     Ready,
-    Running,
 }
 
 /// This is associated with a single DAG.
@@ -210,7 +209,7 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
 }
 
 #[macro_export]
-macro_rules! getset_dag_set_scheduler {
+macro_rules! dag_set_scheduler_common {
     { $t:ty } => {
         fn get_dag_set(&self) -> Vec<Graph<Node, i32>>{
             self.dag_set.clone()
@@ -232,6 +231,15 @@ macro_rules! getset_dag_set_scheduler {
         }
         fn get_current_time_mut(&mut self) -> &mut i32{
             &mut self.current_time
+        }
+
+        fn new(dag_set: &[Graph<Node, i32>], processor: &$t) -> Self {
+            Self {
+                dag_set: dag_set.to_vec(),
+                processor: processor.clone(),
+                log: DAGSetSchedulerLog::new(dag_set, processor.get_num_cores()),
+                current_time: 0,
+            }
         }
     }
 }

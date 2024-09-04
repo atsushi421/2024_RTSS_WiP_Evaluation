@@ -1,4 +1,6 @@
-use crate::getset_dag_set_scheduler;
+use std::collections::VecDeque;
+
+use crate::dag_set_scheduler_common;
 use crate::log::DAGSetSchedulerLog;
 use crate::processor::homogeneous::HomogeneousProcessor;
 use crate::processor::processor_interface::Processor;
@@ -15,24 +17,15 @@ pub struct FixedPriorityScheduler {
 }
 
 impl DAGSetSchedulerBase<HomogeneousProcessor> for FixedPriorityScheduler {
-    fn new(dag_set: &[Graph<Node, i32>], processor: &HomogeneousProcessor) -> Self {
-        Self {
-            dag_set: dag_set.to_vec(),
-            processor: processor.clone(),
-            log: DAGSetSchedulerLog::new(dag_set, processor.get_num_cores()),
-            current_time: 0,
-        }
-    }
+    dag_set_scheduler_common!(HomogeneousProcessor);
 
     fn update_params_when_release(_dag: &mut Graph<Node, i32>, _job_id: i32) {
         // Do nothing.
     }
 
-    fn sort_ready_queue(&self, ready_queue: &mut std::collections::VecDeque<Node>) {
+    fn sort_ready_queue(&self, ready_queue: &mut VecDeque<Node>) {
         ready_queue
             .make_contiguous()
-            .sort_by(|a, b| a.get_value("priority").cmp(&b.get_value("priority")));
+            .sort_by_key(|a| a.get_value("priority"));
     }
-
-    getset_dag_set_scheduler!(HomogeneousProcessor);
 }
