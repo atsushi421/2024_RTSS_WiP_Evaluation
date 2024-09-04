@@ -15,6 +15,40 @@ pub fn dump_struct(file_path: &str, target_struct: &impl Serialize) {
     append_info_to_yaml(file_path, &yaml);
 }
 
+pub fn dump_dag_set_scheduler_result_to_yaml(file_path: &str, result: bool) {
+    let result_info = DAGSetSchedulerResultInfo { result };
+    dump_struct(file_path, &result_info);
+}
+
+pub fn create_yaml(folder_path: &str, file_name: &str) -> String {
+    if fs::metadata(folder_path).is_err() {
+        let _ = fs::create_dir_all(folder_path);
+        info!("Created folder: {}", folder_path);
+    }
+    let file_path = format!("{}/{}.yaml", folder_path, file_name);
+    if let Err(err) = fs::File::create(&file_path) {
+        panic!("Failed to create file: {}", err);
+    }
+    file_path
+}
+
+pub fn create_scheduler_log_yaml(dir_path: &str, alg_name: &str) -> String {
+    let now: DateTime<Utc> = Utc::now();
+    let date = now.format("%Y-%m-%d-%H-%M-%S-%3f").to_string();
+    let file_name = format!("{}-{}-log", date, alg_name);
+    create_yaml(dir_path, &file_name)
+}
+
+pub fn append_info_to_yaml(file_path: &str, info: &str) {
+    if let Ok(mut file) = OpenOptions::new().append(true).create(true).open(file_path) {
+        if let Err(err) = file.write_all(info.as_bytes()) {
+            eprintln!("Failed to write to file: {}", err);
+        }
+    } else {
+        eprintln!("Failed to open file: {}", file_path);
+    }
+}
+
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub struct ProcessorInfo {
     number_of_cores: usize,
@@ -270,66 +304,6 @@ impl DAGSetSchedulerLog {
 }
 
 #[derive(Serialize, Deserialize)]
-struct DAGSchedulerResultInfo {
-    schedule_length: i32,
-    period_factor: f32,
-    result: bool,
-}
-
-pub fn dump_dag_scheduler_result_to_yaml(
-    file_path: &str,
-    schedule_length: i32,
-    period_factor: f32,
-    result: bool,
-) {
-    let result_info = DAGSchedulerResultInfo {
-        schedule_length,
-        period_factor,
-        result,
-    };
-    dump_struct(file_path, &result_info);
-}
-
-#[derive(Serialize, Deserialize)]
 struct DAGSetSchedulerResultInfo {
     result: bool,
-}
-
-pub fn dump_dag_set_scheduler_result_to_yaml(file_path: &str, result: bool) {
-    let result_info = DAGSetSchedulerResultInfo { result };
-    dump_struct(file_path, &result_info);
-}
-
-pub fn create_yaml(folder_path: &str, file_name: &str) -> String {
-    if fs::metadata(folder_path).is_err() {
-        let _ = fs::create_dir_all(folder_path);
-        info!("Created folder: {}", folder_path);
-    }
-    let file_path = format!("{}/{}.yaml", folder_path, file_name);
-    if let Err(err) = fs::File::create(&file_path) {
-        panic!("Failed to create file: {}", err);
-    }
-    file_path
-}
-
-pub fn create_scheduler_log_yaml(dir_path: &str, alg_name: &str) -> String {
-    let now: DateTime<Utc> = Utc::now();
-    let date = now.format("%Y-%m-%d-%H-%M-%S-%3f").to_string();
-    let file_name = format!("{}-{}-log", date, alg_name);
-    create_yaml(dir_path, &file_name)
-}
-
-pub fn append_info_to_yaml(file_path: &str, info: &str) {
-    if let Ok(mut file) = OpenOptions::new()
-        .write(true)
-        .append(true)
-        .create(true)
-        .open(file_path)
-    {
-        if let Err(err) = file.write_all(info.as_bytes()) {
-            eprintln!("Failed to write to file: {}", err);
-        }
-    } else {
-        eprintln!("Failed to open file: {}", file_path);
-    }
 }
