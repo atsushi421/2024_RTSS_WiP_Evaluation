@@ -43,7 +43,7 @@ pub trait DAG {
     fn get_anc_nodes(&self, node_i: NodeIndex) -> Option<Vec<NodeIndex>>;
     fn get_des_nodes(&self, node_i: NodeIndex) -> Option<Vec<NodeIndex>>;
     fn get_dag_param(&self, key: &str) -> i32;
-    fn set_dag_param(&mut self, key: &str, value: i32);
+    fn set_param_to_all_nodes(&mut self, key: &str, value: i32);
     fn add_node_with_id_consistency(&mut self, node: NodeData) -> NodeIndex;
     fn is_node_ready(&self, node_i: NodeIndex) -> bool;
 }
@@ -185,10 +185,11 @@ impl DAG for Graph<NodeData, i32> {
         self[NodeIndex::new(0)].params[key]
     }
 
-    fn set_dag_param(&mut self, key: &str, value: i32) {
+    fn set_param_to_all_nodes(&mut self, key: &str, value: i32) {
         if self.node_indices().count() == 0 {
             panic!("No node found.");
         }
+
         for node_i in self.node_indices() {
             if self[node_i].params.contains_key(key) {
                 self.update_param(node_i, key, value);
@@ -515,7 +516,7 @@ mod tests {
         let mut dag = Graph::<NodeData, i32>::new();
         dag.add_node(create_node(0, "execution_time", 0));
         dag.add_node(create_node(1, "execution_time", 0));
-        dag.set_dag_param("dag_id", 0);
+        dag.set_param_to_all_nodes("dag_id", 0);
 
         for node_i in dag.node_indices() {
             assert_eq!(dag[node_i].params["dag_id"], 0);
@@ -526,7 +527,7 @@ mod tests {
     #[should_panic]
     fn test_set_dag_param_no_exist_node() {
         let mut dag = Graph::<NodeData, i32>::new();
-        dag.set_dag_param("dag_id", 0);
+        dag.set_param_to_all_nodes("dag_id", 0);
     }
 
     #[test]

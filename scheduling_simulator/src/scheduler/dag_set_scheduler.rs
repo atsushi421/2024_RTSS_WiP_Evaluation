@@ -149,7 +149,7 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
             }
         } else {
             log.write_dag_finish_time(dag_id, current_time);
-            dag.set_dag_param("pre_done_count", 0);
+            dag.set_param_to_all_nodes("pre_done_count", 0);
             managers[dag_id].complete_execution();
         }
 

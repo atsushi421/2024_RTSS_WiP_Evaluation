@@ -1,6 +1,6 @@
 use crate::{
     processor::core::ProcessResult,
-    task::dag::{DAG, NodeData},
+    task::dag::{NodeData, DAG},
 };
 use chrono::{DateTime, Utc};
 use log::{info, warn};
@@ -10,7 +10,6 @@ use std::{
     fs::{self, OpenOptions},
     io::Write,
 };
-use yaml_rust::YamlLoader;
 
 pub fn get_hyper_period(dag_set: &[Graph<NodeData, i32>]) -> i32 {
     let mut hyper_period = 1;
@@ -19,14 +18,6 @@ pub fn get_hyper_period(dag_set: &[Graph<NodeData, i32>]) -> i32 {
         hyper_period = lcm(hyper_period, dag_period);
     }
     hyper_period
-}
-
-pub fn load_yaml(file_path: &str) -> Vec<yaml_rust::Yaml> {
-    if !file_path.ends_with(".yaml") && !file_path.ends_with(".yml") {
-        panic!("Invalid file type: {}", file_path);
-    }
-    let file_content = fs::read_to_string(file_path).unwrap();
-    YamlLoader::load_from_str(&file_content).unwrap()
 }
 
 pub fn append_info_to_yaml(file_path: &str, info: &str) {
