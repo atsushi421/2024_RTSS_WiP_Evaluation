@@ -1,4 +1,3 @@
-use crate::dag_set_scheduler::DAGSetSchedulerBase;
 use crate::getset_dag_set_scheduler;
 use crate::graph_extension::GraphExtension;
 use crate::processor::homogeneous::HomogeneousProcessor;
@@ -7,6 +6,8 @@ use crate::{graph_extension::NodeData, log::DAGSetSchedulerLog};
 use petgraph::graph::Graph;
 use std::cmp::Ordering;
 use std::collections::VecDeque;
+
+use super::dag_set_scheduler::DAGSetSchedulerBase;
 
 pub struct GlobalEDFScheduler {
     dag_set: Vec<Graph<NodeData, i32>>,
@@ -84,8 +85,9 @@ impl DAGSetSchedulerBase<HomogeneousProcessor> for GlobalEDFScheduler {
 mod tests {
     use super::*;
     use crate::graph_extension::GraphExtension;
+    use crate::scheduler::dag_set_scheduler::PreemptiveType;
     use crate::util::approx_eq;
-    use crate::{dag_set_scheduler::PreemptiveType, util::load_yaml};
+    use crate::util::load_yaml;
     use std::{collections::BTreeMap, fs::remove_file};
 
     fn create_node(id: i32, key: &str, value: i32) -> NodeData {
