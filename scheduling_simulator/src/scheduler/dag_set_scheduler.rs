@@ -1,8 +1,11 @@
 use crate::{
     log::{DAGSetSchedulerLog, JobEventTimes},
     processor::{core::ProcessResult, processor_interface::Processor},
-    task::dag::{Node, DAG},
-    util::{create_scheduler_log_yaml, get_hyper_period},
+    task::{
+        dag::{Node, DAG},
+        dag_set::get_hyper_period,
+    },
+    util::create_scheduler_log_yaml,
 };
 use petgraph::graph::Graph;
 use std::collections::VecDeque;
