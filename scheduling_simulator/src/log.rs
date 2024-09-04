@@ -106,6 +106,7 @@ impl ProcessorLog {
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub struct DAGSetSchedulerLog {
+    pub deadline_missed: bool,
     pub dag_set_log: Vec<DAGLog>,
     pub processor_log: ProcessorLog,
 }
@@ -118,6 +119,7 @@ impl DAGSetSchedulerLog {
         }
 
         Self {
+            deadline_missed: false,
             dag_set_log,
             processor_log: ProcessorLog::new(num_cores),
         }

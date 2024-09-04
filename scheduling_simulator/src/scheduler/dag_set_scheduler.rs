@@ -158,15 +158,17 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
         None
     }
 
-    fn calculate_log(&mut self) {
+    fn calculate_log(&mut self, deadline_missed: bool) {
         let current_time = self.get_current_time();
         let log = self.get_log_mut();
         log.calculate_utilization(current_time);
         log.calc_response_times();
+        log.deadline_missed = deadline_missed;
     }
 
     fn schedule(&mut self, preemptive_type: PreemptiveType, duration: i32) -> i32 {
         // Start scheduling
+        let mut deadline_missed = false;
         let mut managers = vec![DAGStateManager::default(); self.get_dag_set().len()];
         let mut ready_queue = VecDeque::new();
 
@@ -206,14 +208,15 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
                             ready_queue.push_back(triggered_node);
                         }
                     } else {
-                        break 'outer; // Deadline missed
+                        deadline_missed = true;
+                        break 'outer;
                     }
                 }
             }
             self.sort_ready_queue(&mut ready_queue);
         }
 
-        self.calculate_log();
+        self.calculate_log(deadline_missed);
         self.get_current_time()
     }
 
