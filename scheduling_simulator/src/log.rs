@@ -231,7 +231,7 @@ impl DAGSetSchedulerLog {
         job_id: usize,
         event_time: JobEventTimes,
     ) {
-        let dag_id = node_data.get_params_value("dag_id") as usize;
+        let dag_id = node_data.get_value("dag_id") as usize;
         let job_log = JobLog::new(core_id, dag_id, node_data.id as usize, job_id, event_time);
         self.node_set_logs[dag_id].push(job_log);
     }

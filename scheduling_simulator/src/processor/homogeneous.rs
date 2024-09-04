@@ -50,7 +50,7 @@ impl Processor for HomogeneousProcessor {
             .enumerate()
             .filter_map(|(i, core)| {
                 let node_data = core.processing_node.as_ref()?;
-                let value = node_data.get_params_value(key);
+                let value = node_data.get_value(key);
                 Some((value, i))
             })
             .max_by_key(|&(value, _)| value)

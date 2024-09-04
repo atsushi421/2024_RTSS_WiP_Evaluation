@@ -154,10 +154,10 @@ mod tests_core {
 
         let preempted_node = core.preempt();
         assert_eq!(
-            preempted_node.get_params_value("execution_time"),
+            preempted_node.get_value("execution_time"),
             DUMMY_ET - 1
         );
-        assert_eq!(preempted_node.get_params_value("is_preempted"), 1);
+        assert_eq!(preempted_node.get_value("is_preempted"), 1);
         assert!(core.is_idle);
         assert_eq!(core.processing_node, None);
         assert_eq!(core.remain_proc_time, 0);

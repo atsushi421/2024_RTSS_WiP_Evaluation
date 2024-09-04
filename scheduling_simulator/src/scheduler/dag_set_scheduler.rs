@@ -84,13 +84,12 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
         for dag in dag_set.iter_mut() {
             let dag_id = dag.get_dag_param("dag_id") as usize;
             if (managers[dag_id].get_dag_state() == DAGState::Waiting)
-                && (current_time
-                    == dag.get_head_period().unwrap() * managers[dag_id].get_release_count())
+                && (current_time == dag.get_dag_period() * managers[dag_id].get_release_count())
             {
                 managers[dag_id].release();
                 Self::update_params_when_release(dag, managers[dag_id].get_release_count());
 
-                ready_nodes.push(dag[dag.get_source_nodes()[0]].clone());
+                ready_nodes.push(dag[dag.get_source()[0]].clone());
                 self.get_log_mut()
                     .write_dag_release_time(dag_id, current_time);
             }
@@ -125,20 +124,25 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
         log.write_job_event(
             node,
             core_id,
-            (managers[node.get_params_value("dag_id") as usize].get_release_count() - 1) as usize,
+            (managers[node.get_value("dag_id") as usize].get_release_count() - 1) as usize,
             JobEventTimes::FinishTime(current_time),
         );
-        let dag_id = node.get_params_value("dag_id") as usize;
+        let dag_id = node.get_value("dag_id") as usize;
         let dag = &mut dag_set[dag_id];
 
         let mut ready_nodes = Vec::new();
-        if let Some(suc_nodes) = dag.get_suc_nodes(node.get_id()) {
+        let suc_nodes = dag.get_suc(node.get_id());
+        if suc_nodes.is_empty() {
+            log.write_dag_finish_time(dag_id, current_time);
+            dag.set_param_to_all_nodes("pre_done_count", 0);
+            managers[dag_id].complete_execution();
+        } else {
             for suc_node in suc_nodes {
                 if dag[suc_node].params.contains_key("pre_done_count") {
                     dag.update_param(
                         suc_node,
                         "pre_done_count",
-                        dag[suc_node].get_params_value("pre_done_count") + 1,
+                        dag[suc_node].get_value("pre_done_count") + 1,
                     );
                 } else {
                     dag.add_param(suc_node, "pre_done_count", 1);
@@ -147,10 +151,6 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
                     ready_nodes.push(dag[suc_node].clone());
                 }
             }
-        } else {
-            log.write_dag_finish_time(dag_id, current_time);
-            dag.set_param_to_all_nodes("pre_done_count", 0);
-            managers[dag_id].complete_execution();
         }
 
         self.set_dag_set(dag_set);
@@ -179,7 +179,7 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
                 .get_max_and_index(preemptive_key)
                 .unwrap();
 
-            if max_value > ready_head_node.get_params_value(preemptive_key) {
+            if max_value > ready_head_node.get_value(preemptive_key) {
                 return Some(core_i);
             }
         }
@@ -209,7 +209,7 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
                     self.allocate_node(
                         &node_data,
                         idle_core_i,
-                        managers[node_data.get_params_value("dag_id") as usize].get_release_count()
+                        managers[node_data.get_value("dag_id") as usize].get_release_count()
                             as usize,
                     );
                 } else if let Some(core_i) =
@@ -223,7 +223,7 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
                     self.get_log_mut().write_job_event(
                         &preempted_node_data,
                         core_i,
-                        (managers[preempted_node_data.get_params_value("dag_id") as usize]
+                        (managers[preempted_node_data.get_value("dag_id") as usize]
                             .get_release_count() as usize)
                             - 1,
                         JobEventTimes::PreemptedTime(current_time),
@@ -233,7 +233,7 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
                     self.allocate_node(
                         allocate_node_data,
                         core_i,
-                        managers[allocate_node_data.get_params_value("dag_id") as usize]
+                        managers[allocate_node_data.get_value("dag_id") as usize]
                             .get_release_count() as usize,
                     );
                     // Insert the preempted node into the ready queue

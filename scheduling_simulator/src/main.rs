@@ -47,7 +47,7 @@ fn main() {
         }
         Algorithm::RM => {
             for dag in dag_set.iter_mut() {
-                let dag_period = dag.get_head_period().unwrap();
+                let dag_period = dag.get_dag_period();
                 for node in dag.node_weights_mut() {
                     node.params.insert("priority".to_string(), dag_period);
                 }
