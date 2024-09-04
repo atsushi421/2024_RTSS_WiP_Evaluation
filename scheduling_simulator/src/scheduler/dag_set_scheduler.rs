@@ -2,7 +2,7 @@ use crate::{
     log::{DAGSetSchedulerLog, JobEventTimes},
     processor::{core::ProcessResult, processor_interface::Processor},
     task::dag::{Node, DAG},
-    util::{create_scheduler_log_yaml, get_hyper_period, get_process_core_indices},
+    util::{create_scheduler_log_yaml, get_hyper_period},
 };
 use petgraph::graph::Graph;
 use std::collections::VecDeque;
@@ -76,6 +76,20 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
     fn update_params_when_release(dag: &mut Graph<Node, i32>, job_id: i32);
 
     // method implementation
+    fn get_process_core_indices(process_result: &[ProcessResult]) -> Vec<usize> {
+        process_result
+            .iter()
+            .enumerate()
+            .filter_map(|(index, result)| match result {
+                ProcessResult::InProgress => Some(index),
+                ProcessResult::Done(node_data) if !node_data.params.contains_key("dummy") => {
+                    Some(index)
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
     fn release_dags(&mut self, managers: &mut [impl DAGStateManagerBase]) -> Vec<Node> {
         let current_time = self.get_current_time();
         let mut ready_nodes = Vec::new();
@@ -249,7 +263,7 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
 
             // Write the processing time of the core to the log.
             let log = self.get_log_mut();
-            let indices: Vec<usize> = get_process_core_indices(&process_result);
+            let indices: Vec<usize> = Self::get_process_core_indices(&process_result);
             log.write_processing_time(&indices);
 
             // Post-process on completion of node execution
@@ -303,3 +317,19 @@ macro_rules! getset_dag_set_scheduler {
         }
     }
 }
+
+// #[test]
+// fn test_get_process_core_indices_normal() {
+//     fn create_node(id: i32, key: &str, value: i32) -> Node {
+//         let mut params = BTreeMap::new();
+//         params.insert(key.to_string(), value);
+//         Node { id, params }
+//     }
+//     let process_result = vec![
+//         ProcessResult::InProgress,
+//         ProcessResult::Done(create_node(0, "dummy", -1)),
+//         ProcessResult::Idle,
+//         ProcessResult::Done(create_node(1, "execution_time", 10)),
+//     ];
+//     assert_eq!(get_process_core_indices(&process_result), vec![0, 3]);
+// }

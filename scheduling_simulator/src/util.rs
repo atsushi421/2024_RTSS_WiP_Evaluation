@@ -54,20 +54,6 @@ pub fn create_scheduler_log_yaml(dir_path: &str, alg_name: &str) -> String {
     create_yaml(dir_path, &file_name)
 }
 
-pub fn get_process_core_indices(process_result: &[ProcessResult]) -> Vec<usize> {
-    process_result
-        .iter()
-        .enumerate()
-        .filter_map(|(index, result)| match result {
-            ProcessResult::InProgress => Some(index),
-            ProcessResult::Done(node_data) if !node_data.params.contains_key("dummy") => {
-                Some(index)
-            }
-            _ => None,
-        })
-        .collect()
-}
-
 pub fn approx_eq(a: f64, b: f64) -> bool {
     const EPSILON: f64 = 1e-6;
     (a - b).abs() < EPSILON
@@ -145,21 +131,5 @@ mod tests {
             create_dag_with_period(40),
         ];
         assert_eq!(get_hyper_period(&dag_set), 120);
-    }
-
-    #[test]
-    fn test_get_process_core_indices_normal() {
-        fn create_node(id: i32, key: &str, value: i32) -> Node {
-            let mut params = BTreeMap::new();
-            params.insert(key.to_string(), value);
-            Node { id, params }
-        }
-        let process_result = vec![
-            ProcessResult::InProgress,
-            ProcessResult::Done(create_node(0, "dummy", -1)),
-            ProcessResult::Idle,
-            ProcessResult::Done(create_node(1, "execution_time", 10)),
-        ];
-        assert_eq!(get_process_core_indices(&process_result), vec![0, 3]);
     }
 }
