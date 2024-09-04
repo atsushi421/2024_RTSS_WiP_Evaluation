@@ -1,7 +1,7 @@
 //! This module contains the definition of the core and the process result enum
 use crate::{
     processor::core::ProcessResult::{Done, Idle, InProgress},
-    task::graph_extension::NodeData,
+    task::dag::NodeData,
 };
 use core::panic;
 

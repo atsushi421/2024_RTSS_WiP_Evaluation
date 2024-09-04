@@ -6,7 +6,7 @@ use scheduling_simulator::{
         fixed_priority_scheduler::FixedPriorityScheduler,
         proposed_edf_scheduler::GlobalEDFScheduler,
     },
-    task::{dag_creator::create_dag_set_from_dir, graph_extension::GraphExtension},
+    task::{dag::DAG, dag_creator::create_dag_set_from_dir},
 };
 
 #[derive(Clone, ValueEnum)]

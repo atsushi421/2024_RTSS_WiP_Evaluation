@@ -2,7 +2,7 @@ use crate::getset_dag_set_scheduler;
 use crate::log::DAGSetSchedulerLog;
 use crate::processor::homogeneous::HomogeneousProcessor;
 use crate::processor::processor_interface::Processor;
-use crate::task::graph_extension::NodeData;
+use crate::task::dag::NodeData;
 use petgraph::graph::Graph;
 
 use super::dag_set_scheduler::DAGSetSchedulerBase;

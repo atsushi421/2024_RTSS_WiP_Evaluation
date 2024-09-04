@@ -1,7 +1,7 @@
 use crate::{
     log::{DAGSetSchedulerLog, JobEventTimes},
     processor::{core::ProcessResult, processor_interface::Processor},
-    task::graph_extension::{GraphExtension, NodeData},
+    task::dag::{NodeData, DAG},
     util::{create_scheduler_log_yaml, get_hyper_period, get_process_core_indices},
 };
 use petgraph::graph::Graph;

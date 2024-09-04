@@ -31,7 +31,7 @@ impl NodeData {
     }
 }
 
-pub trait GraphExtension {
+pub trait DAG {
     fn add_param(&mut self, node_i: NodeIndex, key: &str, value: i32);
     fn update_param(&mut self, node_i: NodeIndex, key: &str, value: i32);
     fn remove_nodes(&mut self, node_indices: &[NodeIndex]);
@@ -48,7 +48,7 @@ pub trait GraphExtension {
     fn is_node_ready(&self, node_i: NodeIndex) -> bool;
 }
 
-impl GraphExtension for Graph<NodeData, i32> {
+impl DAG for Graph<NodeData, i32> {
     fn add_param(&mut self, node_i: NodeIndex, key: &str, value: i32) {
         let target_node = self.node_weight_mut(node_i).unwrap();
         if target_node.params.contains_key(key) {

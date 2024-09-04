@@ -1,4 +1,4 @@
-use crate::{task::graph_extension::NodeData, util::append_info_to_yaml};
+use crate::{task::dag::NodeData, util::append_info_to_yaml};
 use petgraph::Graph;
 use serde::Serialize;
 use serde_derive::{Deserialize, Serialize};
