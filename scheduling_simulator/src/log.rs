@@ -3,7 +3,10 @@ use std::{
     io::Write,
 };
 
-use crate::task::dag::{Node, DAG};
+use crate::{
+    processor::core::ProcessResult,
+    task::dag::{Node, DAG},
+};
 use chrono::Utc;
 use log::info;
 use petgraph::Graph;
@@ -141,9 +144,21 @@ impl DAGSetSchedulerLog {
         self.dag_set_log[dag_i].finish_times.push(finish_time);
     }
 
-    pub fn write_processing_time(&mut self, core_indices: &[usize]) {
-        for core_index in core_indices {
-            self.processor_log.core_logs[*core_index].total_proc_time += 1;
+    pub fn write_processing_time(&mut self, process_result: &[ProcessResult]) {
+        let core_indices = process_result
+            .iter()
+            .enumerate()
+            .filter_map(|(index, result)| match result {
+                ProcessResult::InProgress => Some(index),
+                ProcessResult::Done(node_data) if !node_data.params.contains_key("dummy") => {
+                    Some(index)
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
+        for core_i in core_indices {
+            self.processor_log.core_logs[core_i].total_proc_time += 1;
         }
     }
 

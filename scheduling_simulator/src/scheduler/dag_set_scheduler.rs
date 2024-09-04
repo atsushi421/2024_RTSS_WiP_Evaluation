@@ -10,54 +10,40 @@ use petgraph::graph::Graph;
 use std::collections::VecDeque;
 
 #[derive(Clone, Default, PartialEq)]
-pub enum DAGState {
+enum DAGState {
     #[default]
     Waiting,
     Ready,
     Running,
 }
 
-pub trait DAGStateManagerBase {
-    // getter, setter
-    fn get_release_count(&self) -> i32;
-    fn set_release_count(&mut self, release_count: i32);
-    fn get_dag_state(&self) -> DAGState;
-    fn set_dag_state(&mut self, dag_state: DAGState);
-
-    // method implementation
-    fn complete_execution(&mut self) {
-        self.set_dag_state(DAGState::Waiting);
-    }
-
-    fn release(&mut self) {
-        self.set_release_count(self.get_release_count() + 1);
-        self.set_dag_state(DAGState::Ready);
-    }
-}
-
 /// This is associated with a single DAG.
 #[derive(Clone, Default)]
-pub struct DAGStateManager {
+struct DAGStateManager {
     dag_state: DAGState,
     release_count: i32,
 }
 
-impl DAGStateManagerBase for DAGStateManager {
+impl DAGStateManager {
     fn get_release_count(&self) -> i32 {
         self.release_count
     }
-    fn set_release_count(&mut self, release_count: i32) {
-        self.release_count = release_count;
-    }
+
     fn get_dag_state(&self) -> DAGState {
         self.dag_state.clone()
     }
-    fn set_dag_state(&mut self, dag_state: DAGState) {
-        self.dag_state = dag_state;
+
+    fn complete_execution(&mut self) {
+        self.dag_state = DAGState::Waiting;
+    }
+
+    fn release(&mut self) {
+        self.release_count += 1;
+        self.dag_state = DAGState::Ready;
     }
 }
 
-pub enum PreemptiveType {
+enum PreemptiveType {
     NonPreemptive,
     Preemptive { key: String },
 }
@@ -66,11 +52,13 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
     // getter, setter
     fn get_dag_set(&self) -> Vec<Graph<Node, i32>>;
     fn set_dag_set(&mut self, dag_set: Vec<Graph<Node, i32>>);
+    fn get_dag_set_mut(&mut self) -> &mut Vec<Graph<Node, i32>>;
     fn get_processor_mut(&mut self) -> &mut T;
     fn get_processor(&self) -> &T;
     fn get_log_mut(&mut self) -> &mut DAGSetSchedulerLog;
     fn get_current_time(&self) -> i32;
     fn set_current_time(&mut self, current_time: i32);
+    fn get_current_time_mut(&mut self) -> &mut i32;
 
     // method definition
     fn new(dag_set: &[Graph<Node, i32>], processor: &T) -> Self;
@@ -78,21 +66,7 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
     fn update_params_when_release(dag: &mut Graph<Node, i32>, job_id: i32);
 
     // method implementation
-    fn get_process_core_indices(process_result: &[ProcessResult]) -> Vec<usize> {
-        process_result
-            .iter()
-            .enumerate()
-            .filter_map(|(index, result)| match result {
-                ProcessResult::InProgress => Some(index),
-                ProcessResult::Done(node_data) if !node_data.params.contains_key("dummy") => {
-                    Some(index)
-                }
-                _ => None,
-            })
-            .collect()
-    }
-
-    fn release_dags(&mut self, managers: &mut [impl DAGStateManagerBase]) -> Vec<Node> {
+    fn release_dags(&mut self, managers: &mut [DAGStateManager]) -> Vec<Node> {
         let current_time = self.get_current_time();
         let mut ready_nodes = Vec::new();
         let mut dag_set = self.get_dag_set();
@@ -129,7 +103,7 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
         &mut self,
         node: &Node,
         core_id: usize,
-        managers: &mut [impl DAGStateManagerBase],
+        managers: &mut [DAGStateManager],
     ) -> Vec<Node> {
         let mut dag_set = self.get_dag_set();
         let current_time = self.get_current_time();
@@ -249,8 +223,7 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
 
             // Write the processing time of the core to the log.
             let log = self.get_log_mut();
-            let indices: Vec<usize> = Self::get_process_core_indices(&process_result);
-            log.write_processing_time(&indices);
+            log.write_processing_time(&process_result);
 
             // Post-process on completion of node execution
             for (core_id, result) in process_result.iter().enumerate() {
@@ -300,19 +273,3 @@ macro_rules! getset_dag_set_scheduler {
         }
     }
 }
-
-// #[test]
-// fn test_get_process_core_indices_normal() {
-//     fn create_node(id: i32, key: &str, value: i32) -> Node {
-//         let mut params = BTreeMap::new();
-//         params.insert(key.to_string(), value);
-//         Node { id, params }
-//     }
-//     let process_result = vec![
-//         ProcessResult::InProgress,
-//         ProcessResult::Done(create_node(0, "dummy", -1)),
-//         ProcessResult::Idle,
-//         ProcessResult::Done(create_node(1, "execution_time", 10)),
-//     ];
-//     assert_eq!(get_process_core_indices(&process_result), vec![0, 3]);
-// }
