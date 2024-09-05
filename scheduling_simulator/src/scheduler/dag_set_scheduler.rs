@@ -65,12 +65,13 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
         node: &Node,
         uncompleted_dags: &mut Vec<Graph<Node, i32>>,
     ) -> Result<Vec<Node>, String> {
-        let dag_id = node.get_value("dag_id");
+        let node_dag_id = node.get_value("dag_id");
+        let node_job_id = node.get_value("job_id");
         let owner_dag = uncompleted_dags
             .iter_mut()
             .find(|dag| {
-                dag.get_dag_param("dag_id") == dag_id
-                    && dag.get_dag_param("job_id") == node.get_value("job_id")
+                dag.get_dag_param("dag_id") == node_dag_id
+                    && dag.get_dag_param("job_id") == node_job_id
             })
             .unwrap();
         let current_time = self.get_current_time();
@@ -80,13 +81,13 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
         if suc_nodes.is_empty() {
             let response_time = self
                 .get_log_mut()
-                .write_dag_finish_time(dag_id as usize, current_time);
+                .write_dag_finish_time(node_dag_id as usize, current_time);
             if response_time > node.get_value("relative_deadline") {
                 return Err("Deadline missed".to_string());
             }
             uncompleted_dags.retain(|dag| {
-                !(dag.get_dag_param("dag_id") == dag_id
-                    && dag.get_dag_param("job_id") == node.get_value("job_id"))
+                !(dag.get_dag_param("dag_id") == node_dag_id
+                    && dag.get_dag_param("job_id") == node_job_id)
             });
         } else {
             for suc in suc_nodes {

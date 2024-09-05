@@ -24,8 +24,11 @@ impl DAGSetSchedulerBase<HomogeneousProcessor> for FixedPriorityScheduler {
     }
 
     fn sort_ready_queue(&self, ready_queue: &mut VecDeque<Node>) {
-        ready_queue
-            .make_contiguous()
-            .sort_by_key(|a| a.get_value("priority"));
+        ready_queue.make_contiguous().sort_by(|a, b| {
+            match a.get_value("priority").cmp(&b.get_value("priority")) {
+                std::cmp::Ordering::Equal => a.get_value("job_id").cmp(&b.get_value("job_id")),
+                other => other,
+            }
+        });
     }
 }
