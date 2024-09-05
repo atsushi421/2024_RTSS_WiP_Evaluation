@@ -94,3 +94,53 @@ pub fn create_simple_dag() -> Graph<Node, i32> {
 
     dag
 }
+
+pub fn create_multi_sink_dag_set() -> Vec<Graph<Node, i32>> {
+    let mut dag_set = Vec::new();
+
+    // dag0
+    let mut dag = Graph::<Node, i32>::new();
+    let node0_params = BTreeMap::from([
+        ("period".to_string(), 10),
+        ("execution_time".to_string(), 2),
+    ]);
+    let node_0 = dag.add_node(Node::new(0, node0_params));
+    let node1_params = BTreeMap::from([
+        ("execution_time".to_string(), 2),
+        ("relative_deadline".to_string(), 10),
+    ]);
+    let node_1 = dag.add_node(Node::new(1, node1_params));
+    let node2_params = BTreeMap::from([
+        ("execution_time".to_string(), 1),
+        ("relative_deadline".to_string(), 6),
+    ]);
+    let node_2 = dag.add_node(Node::new(2, node2_params));
+    dag.add_edge(node_0, node_1, 0);
+    dag.add_edge(node_0, node_2, 0);
+    dag.set_param_to_all_nodes("dag_id", 0);
+    dag_set.push(dag);
+
+    // dag1
+    let mut dag = Graph::<Node, i32>::new();
+    let node0_params = BTreeMap::from([
+        ("period".to_string(), 15),
+        ("execution_time".to_string(), 3),
+    ]);
+    let node_0 = dag.add_node(Node::new(0, node0_params));
+    let node1_params = BTreeMap::from([
+        ("execution_time".to_string(), 1),
+        ("relative_deadline".to_string(), 12),
+    ]);
+    let node_1 = dag.add_node(Node::new(1, node1_params));
+    let node2_params = BTreeMap::from([
+        ("execution_time".to_string(), 2),
+        ("relative_deadline".to_string(), 15),
+    ]);
+    let node_2 = dag.add_node(Node::new(2, node2_params));
+    dag.add_edge(node_0, node_1, 0);
+    dag.add_edge(node_0, node_2, 0);
+    dag.set_param_to_all_nodes("dag_id", 1);
+    dag_set.push(dag);
+
+    dag_set
+}

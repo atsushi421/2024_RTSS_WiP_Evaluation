@@ -31,9 +31,9 @@ fn test_sequential_rm_scheduler_normal() {
 
     let log = scheduler.get_log();
     assert!(!log.deadline_missed);
-    let rt0 = log.dag_set_log[0].response_times.clone();
+    let rt0 = log.dag_set_log[0].response_times_per_sink[&0].clone();
     assert_eq!(rt0, vec![1, 1, 1, 1, 1, 1]);
-    let rt1 = log.dag_set_log[1].response_times.clone();
+    let rt1 = log.dag_set_log[1].response_times_per_sink[&0].clone();
     assert_eq!(rt1, vec![5, 5, 5, 4]);
 }
 
@@ -58,8 +58,8 @@ fn test_sequential_rm_scheduler_missed() {
 
     let log = scheduler.get_log();
     assert!(log.deadline_missed);
-    let rt0 = log.dag_set_log[0].response_times.clone();
+    let rt0 = log.dag_set_log[0].response_times_per_sink[&0].clone();
     assert_eq!(rt0, vec![2, 2]);
-    let rt1 = log.dag_set_log[1].response_times.clone();
+    let rt1 = log.dag_set_log[1].response_times_per_sink[&0].clone();
     assert_eq!(rt1, vec![8]);
 }

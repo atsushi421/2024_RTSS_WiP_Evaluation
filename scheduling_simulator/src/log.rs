@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     fs::{self, OpenOptions},
     io::Write,
 };
@@ -16,11 +17,11 @@ use serde_derive::{Deserialize, Serialize};
 pub struct DAGLog {
     dag_id: usize,
     release_times: Vec<i32>,
-    finish_times: Vec<i32>,
-    pub response_times: Vec<i32>,
-    best_response_time: i32,
-    average_response_time: f32,
-    worst_response_time: i32,
+    finish_times: HashMap<usize, Vec<i32>>, // sink_i -> finish_times
+    pub response_times_per_sink: HashMap<usize, Vec<i32>>, // sink_i -> response_times
+    best_response_time_per_sink: HashMap<usize, i32>,
+    average_response_time_per_sink: HashMap<usize, f32>,
+    worst_response_time_per_sink: HashMap<usize, i32>,
 }
 
 impl DAGLog {
@@ -29,18 +30,29 @@ impl DAGLog {
             dag_id,
             release_times: Default::default(),
             finish_times: Default::default(),
-            response_times: Default::default(),
-            best_response_time: Default::default(),
-            average_response_time: Default::default(),
-            worst_response_time: Default::default(),
+            response_times_per_sink: Default::default(),
+            best_response_time_per_sink: Default::default(),
+            average_response_time_per_sink: Default::default(),
+            worst_response_time_per_sink: Default::default(),
         }
     }
 
     pub fn calc_response_times(&mut self) {
-        self.best_response_time = *self.response_times.iter().min().unwrap();
-        self.average_response_time =
-            self.response_times.iter().sum::<i32>() as f32 / self.response_times.len() as f32;
-        self.worst_response_time = *self.response_times.iter().max().unwrap();
+        for (&sink_i, rts) in &self.response_times_per_sink {
+            let mut sum_rt = 0;
+            let mut min_rt = i32::MAX;
+            let mut max_rt = i32::MIN;
+            for &rt in rts {
+                sum_rt += rt;
+                min_rt = min_rt.min(rt);
+                max_rt = max_rt.max(rt);
+            }
+
+            self.best_response_time_per_sink.insert(sink_i, min_rt);
+            self.average_response_time_per_sink
+                .insert(sink_i, sum_rt as f32 / rts.len() as f32);
+            self.worst_response_time_per_sink.insert(sink_i, max_rt);
+        }
     }
 }
 
@@ -129,11 +141,16 @@ impl DAGSetSchedulerLog {
         self.dag_set_log[dag_i].release_times.push(release_time);
     }
 
-    pub fn write_dag_finish_time(&mut self, dag_i: usize, finish_time: i32) -> i32 {
-        let response_time = finish_time
-            - self.dag_set_log[dag_i].release_times[self.dag_set_log[dag_i].finish_times.len()];
-        self.dag_set_log[dag_i].finish_times.push(finish_time);
-        self.dag_set_log[dag_i].response_times.push(response_time);
+    pub fn write_dag_finish_time(&mut self, dag_i: usize, sink_i: usize, finish_time: i32) -> i32 {
+        let dag_log = &mut self.dag_set_log[dag_i];
+        let finish_times = dag_log.finish_times.entry(sink_i).or_default();
+        let response_time = finish_time - dag_log.release_times[finish_times.len()];
+        dag_log
+            .response_times_per_sink
+            .entry(sink_i)
+            .or_default()
+            .push(response_time);
+        finish_times.push(finish_time);
 
         response_time
     }

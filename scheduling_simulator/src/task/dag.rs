@@ -43,6 +43,7 @@ pub trait DAG {
     fn get_dag_param(&self, key: &str) -> i32;
     fn set_param_to_all_nodes(&mut self, key: &str, value: i32);
     fn is_node_ready(&self, node_i: NodeIndex) -> bool;
+    fn is_completed(&self) -> bool;
 }
 
 impl DAG for Graph<Node, i32> {
@@ -168,6 +169,16 @@ impl DAG for Graph<Node, i32> {
     fn is_node_ready(&self, node_i: NodeIndex) -> bool {
         let pre_nodes_count = self.get_pre(node_i).len() as i32;
         pre_nodes_count == self[node_i].get_value("pre_done_count")
+    }
+
+    fn is_completed(&self) -> bool {
+        self.node_weights().all(|node| {
+            if let Some(&completed) = node.params.get("completed") {
+                completed == 1
+            } else {
+                false
+            }
+        })
     }
 }
 

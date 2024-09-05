@@ -74,21 +74,26 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
                     && dag.get_dag_param("job_id") == node_job_id
             })
             .unwrap();
+        owner_dag.set_param(node.get_id(), "completed", 1);
         let current_time = self.get_current_time();
 
         let mut triggered_nodes = Vec::new();
         let suc_nodes = owner_dag.get_suc(node.get_id());
         if suc_nodes.is_empty() {
-            let response_time = self
-                .get_log_mut()
-                .write_dag_finish_time(node_dag_id as usize, current_time);
+            let response_time = self.get_log_mut().write_dag_finish_time(
+                node_dag_id as usize,
+                node.id as usize,
+                current_time,
+            );
             if response_time > node.get_value("relative_deadline") {
                 return Err("Deadline missed".to_string());
             }
-            uncompleted_dags.retain(|dag| {
-                !(dag.get_dag_param("dag_id") == node_dag_id
-                    && dag.get_dag_param("job_id") == node_job_id)
-            });
+            if owner_dag.is_completed() {
+                uncompleted_dags.retain(|dag| {
+                    !(dag.get_dag_param("dag_id") == node_dag_id
+                        && dag.get_dag_param("job_id") == node_job_id)
+                });
+            }
         } else {
             for suc in suc_nodes {
                 owner_dag.set_param(

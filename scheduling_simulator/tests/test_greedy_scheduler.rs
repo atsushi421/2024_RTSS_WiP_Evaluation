@@ -25,7 +25,10 @@ fn test_work_conserving_scheduler_once_3core() {
 
     let log = scheduler.get_log();
     assert!(!log.deadline_missed);
-    assert_eq!(log.dag_set_log[0].response_times.clone(), vec![8]);
+    assert_eq!(
+        log.dag_set_log[0].response_times_per_sink[&6].clone(),
+        vec![8]
+    );
 }
 
 #[test]
@@ -45,7 +48,10 @@ fn test_work_conserving_scheduler_once_2core() {
 
     let log = scheduler.get_log();
     assert!(!log.deadline_missed);
-    assert_eq!(log.dag_set_log[0].response_times.clone(), vec![11]);
+    assert_eq!(
+        log.dag_set_log[0].response_times_per_sink[&6].clone(),
+        vec![11]
+    );
 }
 
 #[test]
@@ -65,5 +71,8 @@ fn test_work_conserving_scheduler_duration_2core() {
 
     let log = scheduler.get_log();
     assert!(!log.deadline_missed);
-    assert_eq!(log.dag_set_log[0].response_times.clone(), vec![11, 11]);
+    assert_eq!(
+        log.dag_set_log[0].response_times_per_sink[&6].clone(),
+        vec![11, 11]
+    );
 }
