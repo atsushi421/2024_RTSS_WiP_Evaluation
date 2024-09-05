@@ -130,8 +130,9 @@ impl DAGSetSchedulerLog {
     }
 
     pub fn write_dag_finish_time(&mut self, dag_i: usize, finish_time: i32) -> i32 {
+        let response_time = finish_time
+            - self.dag_set_log[dag_i].release_times[self.dag_set_log[dag_i].finish_times.len()];
         self.dag_set_log[dag_i].finish_times.push(finish_time);
-        let response_time = finish_time - self.dag_set_log[dag_i].release_times.last().unwrap();
         self.dag_set_log[dag_i].response_times.push(response_time);
 
         response_time

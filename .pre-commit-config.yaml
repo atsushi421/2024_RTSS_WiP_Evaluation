@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: cargo-test
+        name: Cargo Test
+        entry: bash -c 'cd scheduling_simulator && cargo test'
+        language: system
+        types: [rust]

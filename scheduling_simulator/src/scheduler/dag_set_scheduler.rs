@@ -6,39 +6,6 @@ use crate::{
 use petgraph::graph::Graph;
 use std::collections::VecDeque;
 
-#[derive(Clone, Default, PartialEq)]
-enum DAGState {
-    #[default]
-    Waiting,
-    Ready,
-}
-
-/// This is associated with a single DAG.
-#[derive(Clone, Default)]
-pub struct DAGStateManager {
-    dag_state: DAGState,
-    release_count: i32,
-}
-
-impl DAGStateManager {
-    fn get_release_count(&self) -> i32 {
-        self.release_count
-    }
-
-    fn get_dag_state(&self) -> DAGState {
-        self.dag_state.clone()
-    }
-
-    fn complete_execution(&mut self) {
-        self.dag_state = DAGState::Waiting;
-    }
-
-    fn release(&mut self) {
-        self.release_count += 1;
-        self.dag_state = DAGState::Ready;
-    }
-}
-
 pub enum PreemptiveType {
     NonPreemptive,
     Preemptive { key: String },
@@ -61,21 +28,20 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
     fn update_params_when_release(dag: &mut Graph<Node, i32>, job_id: i32);
 
     // method implementation
-    fn release_dags(&mut self, managers: &mut [DAGStateManager]) -> Vec<Node> {
+    fn release_dags(&mut self, uncompleted_dags: &mut Vec<Graph<Node, i32>>) -> Vec<Node> {
         let mut ready_nodes = Vec::new();
         let current_time = self.get_current_time();
         let mut dag_set = self.get_dag_set();
 
         for dag in dag_set.iter_mut() {
-            let dag_i = dag.get_dag_param("dag_id") as usize;
-            if (managers[dag_i].get_dag_state() == DAGState::Waiting)
-                && (current_time == dag.get_dag_period() * managers[dag_i].get_release_count())
-            {
-                managers[dag_i].release();
-                Self::update_params_when_release(dag, managers[dag_i].get_release_count());
+            let job_i = dag.get_dag_param("job_id");
+            if current_time == dag.get_dag_period() * job_i {
+                Self::update_params_when_release(dag, job_i);
                 ready_nodes.push(dag[dag.get_source()[0]].clone());
+                uncompleted_dags.push(dag.clone());
                 self.get_log_mut()
-                    .write_dag_release_time(dag_i, current_time);
+                    .write_dag_release_time(dag.get_dag_param("dag_id") as usize, current_time);
+                dag.set_param_to_all_nodes("job_id", job_i + 1);
             }
         }
         self.set_dag_set(dag_set);
@@ -95,43 +61,47 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
     fn node_completion(
         &mut self,
         node: &Node,
-        managers: &mut [DAGStateManager],
+        uncompleted_dags: &mut Vec<Graph<Node, i32>>,
     ) -> Result<Vec<Node>, String> {
-        let mut dag_set = self.get_dag_set();
-        let dag_id = node.get_value("dag_id") as usize;
-        let dag = &mut dag_set[dag_id];
+        let dag_id = node.get_value("dag_id");
+        let owner_dag = uncompleted_dags
+            .iter_mut()
+            .find(|dag| {
+                dag.get_dag_param("dag_id") == dag_id
+                    && dag.get_dag_param("job_id") == node.get_value("job_id")
+            })
+            .unwrap();
         let current_time = self.get_current_time();
 
         let mut triggered_nodes = Vec::new();
-        let suc_nodes = dag.get_suc(node.get_id());
+        let suc_nodes = owner_dag.get_suc(node.get_id());
         if suc_nodes.is_empty() {
             let response_time = self
                 .get_log_mut()
-                .write_dag_finish_time(dag_id, current_time);
-            if response_time > dag.get_dag_param("relative_deadline") {
+                .write_dag_finish_time(dag_id as usize, current_time);
+            if response_time > node.get_value("relative_deadline") {
                 return Err("Deadline missed".to_string());
             }
-
-            dag.set_param_to_all_nodes("pre_done_count", 0);
-            managers[dag_id].complete_execution();
+            uncompleted_dags.retain(|dag| {
+                !(dag.get_dag_param("dag_id") == dag_id
+                    && dag.get_dag_param("job_id") == node.get_value("job_id"))
+            });
         } else {
             for suc in suc_nodes {
-                if dag[suc].params.contains_key("pre_done_count") {
-                    dag.update_param(
+                if owner_dag[suc].params.contains_key("pre_done_count") {
+                    owner_dag.update_param(
                         suc,
                         "pre_done_count",
-                        dag[suc].get_value("pre_done_count") + 1,
+                        owner_dag[suc].get_value("pre_done_count") + 1,
                     );
                 } else {
-                    dag.add_param(suc, "pre_done_count", 1);
+                    owner_dag.add_param(suc, "pre_done_count", 1);
                 }
-                if dag.is_node_ready(suc) {
-                    triggered_nodes.push(dag[suc].clone());
+                if owner_dag.is_node_ready(suc) {
+                    triggered_nodes.push(owner_dag[suc].clone());
                 }
             }
         }
-
-        self.set_dag_set(dag_set);
 
         Ok(triggered_nodes)
     }
@@ -167,14 +137,21 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
     }
 
     fn schedule(&mut self, preemptive_type: PreemptiveType, duration: i32) -> i32 {
+        // Initialize job_id
+        let mut dag_set = self.get_dag_set();
+        for dag in dag_set.iter_mut() {
+            dag.set_param_to_all_nodes("job_id", 0);
+        }
+        self.set_dag_set(dag_set);
+
         // Start scheduling
         let mut deadline_missed = false;
-        let mut managers = vec![DAGStateManager::default(); self.get_dag_set().len()];
         let mut ready_queue = VecDeque::new();
+        let mut uncompleted_dag_jobs = Vec::new();
 
         'outer: while self.get_current_time() < duration {
             // Release DAGs
-            for ready_node in self.release_dags(&mut managers) {
+            for ready_node in self.release_dags(&mut uncompleted_dag_jobs) {
                 ready_queue.push_back(ready_node);
             }
             self.sort_ready_queue(&mut ready_queue);
@@ -203,7 +180,9 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
             // Post-process on completion of node execution
             for result in process_result.iter() {
                 if let ProcessResult::Done(node_data) = result {
-                    if let Ok(triggered_nodes) = self.node_completion(node_data, &mut managers) {
+                    if let Ok(triggered_nodes) =
+                        self.node_completion(node_data, &mut uncompleted_dag_jobs)
+                    {
                         for triggered_node in triggered_nodes {
                             ready_queue.push_back(triggered_node);
                         }
