@@ -6,7 +6,7 @@ use super::dag::{Node, DAG};
 pub fn get_hyper_period(dag_set: &[Graph<Node, i32>]) -> i32 {
     let mut hyper_period = 1;
     for dag in dag_set {
-        let dag_period = dag.get_dag_period();
+        let dag_period = dag.get_dag_param("period");
         hyper_period = lcm(hyper_period, dag_period);
     }
     hyper_period

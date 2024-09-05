@@ -34,9 +34,8 @@ pub trait DAG {
     fn add_param(&mut self, node_i: NodeIndex, key: &str, value: i32);
     fn update_param(&mut self, node_i: NodeIndex, key: &str, value: i32);
     fn set_param(&mut self, node_i: NodeIndex, key: &str, value: i32);
-    fn get_source(&self) -> Vec<NodeIndex>;
+    fn get_source(&self) -> NodeIndex;
     fn get_sink(&self) -> Vec<NodeIndex>;
-    fn get_dag_period(&self) -> i32;
     fn get_pre(&self, node_i: NodeIndex) -> Vec<NodeIndex>;
     fn get_suc(&self, node_i: NodeIndex) -> Vec<NodeIndex>;
     fn get_anc(&self, node_i: NodeIndex) -> Vec<NodeIndex>;
@@ -70,25 +69,22 @@ impl DAG for Graph<Node, i32> {
         target_node.params.insert(key.to_string(), value);
     }
 
-    fn get_source(&self) -> Vec<NodeIndex> {
-        self.node_indices()
+    fn get_source(&self) -> NodeIndex {
+        let source = self
+            .node_indices()
             .filter(|&i| self.edges_directed(i, Incoming).next().is_none())
-            .collect::<Vec<_>>()
+            .collect::<Vec<_>>();
+        if source.len() > 1 {
+            panic!("Multiple source nodes found.");
+        }
+
+        source[0]
     }
 
     fn get_sink(&self) -> Vec<NodeIndex> {
         self.node_indices()
             .filter(|&i| self.edges_directed(i, Outgoing).next().is_none())
             .collect::<Vec<_>>()
-    }
-
-    fn get_dag_period(&self) -> i32 {
-        let source_nodes = self.get_source();
-        if source_nodes.len() > 1 {
-            panic!("Multiple source nodes found.");
-        }
-
-        self[source_nodes[0]].get_value("period")
     }
 
     fn get_pre(&self, node_i: NodeIndex) -> Vec<NodeIndex> {
@@ -152,7 +148,7 @@ impl DAG for Graph<Node, i32> {
     }
 
     fn get_dag_param(&self, key: &str) -> i32 {
-        self[NodeIndex::new(0)].get_value(key)
+        self[self.get_source()].get_value(key)
     }
 
     fn set_param_to_all_nodes(&mut self, key: &str, value: i32) {
@@ -210,13 +206,9 @@ mod tests_dag {
         let n0 = dag.add_node(create_node("execution_time", None));
         let n1 = dag.add_node(create_node("execution_time", None));
         let n2 = dag.add_node(create_node("execution_time", None));
-        assert_eq!(
-            dag.get_source(),
-            vec![NodeIndex::new(0), NodeIndex::new(1), NodeIndex::new(2),]
-        );
         dag.add_edge(n0, n1, 1);
         dag.add_edge(n0, n2, 1);
-        assert_eq!(dag.get_source(), vec![NodeIndex::new(0)]);
+        assert_eq!(dag.get_source(), NodeIndex::new(0));
     }
 
     #[test]
@@ -232,17 +224,6 @@ mod tests_dag {
         dag.add_edge(n0, n1, 0);
         dag.add_edge(n0, n2, 0);
         assert_eq!(dag.get_sink(), vec![NodeIndex::new(1), NodeIndex::new(2)]);
-    }
-
-    #[test]
-    fn test_get_dag_period_normal() {
-        let mut dag = Graph::<Node, i32>::new();
-        const NODE0_PERIOD: i32 = 1;
-        let n0 = dag.add_node(create_node("period", Some(NODE0_PERIOD)));
-        let n1 = dag.add_node(create_node("execution_time", None));
-        dag.add_edge(n0, n1, 0);
-
-        assert_eq!(dag.get_dag_period(), NODE0_PERIOD);
     }
 
     #[test]

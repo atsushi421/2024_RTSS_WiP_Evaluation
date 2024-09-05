@@ -25,7 +25,7 @@ impl DAGSetSchedulerBase<HomogeneousProcessor> for GlobalEDFScheduler {
             dag.set_param(
                 *sink_i,
                 "ref_absolute_deadline",
-                dag[*sink_i].get_value("relative_deadline") + job_id * dag.get_dag_period(),
+                dag[*sink_i].get_value("relative_deadline") + job_id * dag.get_dag_param("period"),
             )
         }
 

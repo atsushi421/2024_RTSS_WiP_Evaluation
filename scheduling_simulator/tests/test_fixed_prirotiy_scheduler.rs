@@ -14,7 +14,7 @@ use util::{create_sequential_dag_set0, create_sequential_dag_set1};
 fn test_sequential_rm_scheduler_normal() {
     let mut dag_set = create_sequential_dag_set1();
     for dag in dag_set.iter_mut() {
-        let dag_period = dag.get_dag_period();
+        let dag_period = dag.get_dag_param("period");
         for node in dag.node_weights_mut() {
             node.params.insert("priority".to_string(), dag_period);
         }
@@ -41,7 +41,7 @@ fn test_sequential_rm_scheduler_normal() {
 fn test_sequential_rm_scheduler_missed() {
     let mut dag_set = create_sequential_dag_set0();
     for dag in dag_set.iter_mut() {
-        let dag_period = dag.get_dag_period();
+        let dag_period = dag.get_dag_param("period");
         for node in dag.node_weights_mut() {
             node.params.insert("priority".to_string(), dag_period);
         }

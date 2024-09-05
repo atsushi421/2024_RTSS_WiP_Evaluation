@@ -28,25 +28,27 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
     fn update_params_when_release(dag: &mut Graph<Node, i32>, job_id: i32);
 
     // method implementation
-    fn release_dags(&mut self, uncompleted_dags: &mut Vec<Graph<Node, i32>>) -> Vec<Node> {
-        let mut ready_nodes = Vec::new();
+    fn release_dags(
+        &mut self,
+        ready_queue: &mut VecDeque<Node>,
+        uncompleted_dag_jobs: &mut Vec<Graph<Node, i32>>,
+    ) {
         let current_time = self.get_current_time();
         let mut dag_set = self.get_dag_set();
 
         for dag in dag_set.iter_mut() {
             let job_i = dag.get_dag_param("job_id");
-            if current_time == dag.get_dag_period() * job_i {
+            if current_time == dag.get_dag_param("period") * job_i {
                 Self::update_params_when_release(dag, job_i);
-                ready_nodes.push(dag[dag.get_source()[0]].clone());
-                uncompleted_dags.push(dag.clone());
+                ready_queue.push_back(dag[dag.get_source()].clone());
+                uncompleted_dag_jobs.push(dag.clone());
                 self.get_log_mut()
                     .write_dag_release_time(dag.get_dag_param("dag_id") as usize, current_time);
                 dag.set_param_to_all_nodes("job_id", job_i + 1);
             }
         }
-        self.set_dag_set(dag_set);
 
-        ready_nodes
+        self.set_dag_set(dag_set);
     }
 
     fn process_unit_time(&mut self) -> Vec<ProcessResult> {
@@ -151,9 +153,7 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
 
         'outer: while self.get_current_time() < duration {
             // Release DAGs
-            for ready_node in self.release_dags(&mut uncompleted_dag_jobs) {
-                ready_queue.push_back(ready_node);
-            }
+            self.release_dags(&mut ready_queue, &mut uncompleted_dag_jobs);
             self.sort_ready_queue(&mut ready_queue);
 
             // Allocate nodes as long as there are idle cores, and attempt to preempt when all cores are busy.
