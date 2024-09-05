@@ -1,0 +1,11 @@
+nodes:
+- id: 0
+  execution_time: 1
+  period: 1000
+- id: 1
+  execution_time: 1
+  relative_deadline: 1000
+
+links:
+- source: 0
+  target: 1

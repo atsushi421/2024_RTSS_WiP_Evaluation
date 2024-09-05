@@ -95,6 +95,7 @@ pub fn create_simple_dag() -> Graph<Node, i32> {
     dag
 }
 
+// rtss_wip_evaluation.drawio
 pub fn create_multi_sink_dag_set() -> Vec<Graph<Node, i32>> {
     let mut dag_set = Vec::new();
 
