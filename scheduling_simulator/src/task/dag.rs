@@ -167,8 +167,7 @@ impl DAG for Graph<Node, i32> {
 
     fn is_node_ready(&self, node_i: NodeIndex) -> bool {
         let pre_nodes_count = self.get_pre(node_i).len() as i32;
-        let pre_done_count = self[node_i].params.get("pre_done_count").unwrap_or(&0);
-        pre_nodes_count == *pre_done_count
+        pre_nodes_count == self[node_i].get_value("pre_done_count")
     }
 }
 
@@ -298,9 +297,10 @@ mod tests_dag {
         let n1 = dag.add_node(create_node("execution_time", None));
         dag.add_edge(n0, n1, 0);
 
+        dag.set_param_to_all_nodes("pre_done_count", 0);
         assert!(dag.is_node_ready(n0));
         assert!(!dag.is_node_ready(n1));
-        dag.add_param(n1, "pre_done_count", 1);
+        dag.update_param(n1, "pre_done_count", 1);
         assert!(dag.is_node_ready(n1));
     }
 }

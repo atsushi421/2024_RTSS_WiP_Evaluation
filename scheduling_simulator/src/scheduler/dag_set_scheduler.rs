@@ -91,15 +91,11 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
             });
         } else {
             for suc in suc_nodes {
-                if owner_dag[suc].params.contains_key("pre_done_count") {
-                    owner_dag.update_param(
-                        suc,
-                        "pre_done_count",
-                        owner_dag[suc].get_value("pre_done_count") + 1,
-                    );
-                } else {
-                    owner_dag.add_param(suc, "pre_done_count", 1);
-                }
+                owner_dag.set_param(
+                    suc,
+                    "pre_done_count",
+                    owner_dag[suc].get_value("pre_done_count") + 1,
+                );
                 if owner_dag.is_node_ready(suc) {
                     triggered_nodes.push(owner_dag[suc].clone());
                 }
@@ -144,6 +140,7 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
         let mut dag_set = self.get_dag_set();
         for dag in dag_set.iter_mut() {
             dag.set_param_to_all_nodes("job_id", 0);
+            dag.set_param_to_all_nodes("pre_done_count", 0)
         }
         self.set_dag_set(dag_set);
 
