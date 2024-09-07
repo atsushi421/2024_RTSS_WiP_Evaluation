@@ -6,7 +6,7 @@ use scheduling_simulator::{
         fixed_priority_scheduler::FixedPriorityScheduler,
         proposed_edf_scheduler::GlobalEDFScheduler,
     },
-    task::{dag::DAG, dag_creator::create_dag_set_from_dir, dag_set::get_hyper_period},
+    task::{dag::DAG, dag_creator::create_dag_set_from_dir},
 };
 
 #[derive(Clone, ValueEnum)]
@@ -25,8 +25,11 @@ struct ArgParser {
     #[clap(short = 'a', long = "algorithm", required = true, value_enum)]
     algorithm: Algorithm,
     /// Number of processing cores.
-    #[clap(short = 'c', long = "number_of_cores", required = true)]
-    number_of_cores: usize,
+    #[clap(short = 'c', long = "num_cores", required = true)]
+    num_cores: usize,
+    /// Simulation duration.
+    #[clap(short = 's', long = "sim_duration", required = true)]
+    sim_duration: i32,
     /// Path to output directory.
     #[clap(short = 'o', long = "output_dir_path", default_value = "../outputs")]
     output_dir_path: String,
@@ -35,8 +38,8 @@ struct ArgParser {
 fn main() {
     let arg: ArgParser = ArgParser::parse();
     let mut dag_set = create_dag_set_from_dir(&arg.dag_dir_path);
-    let processor = HomogeneousProcessor::new(arg.number_of_cores);
-    let schedule_length = get_hyper_period(&dag_set);
+    let processor = HomogeneousProcessor::new(arg.num_cores);
+    let schedule_length = arg.sim_duration;
 
     match arg.algorithm {
         Algorithm::ProposedEDF => {

@@ -37,6 +37,7 @@ fn create_dag_from_yaml(path: &str) -> Graph<Node, i32> {
                     params.insert(key_str.to_owned(), (value.as_i64().unwrap()) as i32);
                 }
                 _ => {
+                    println!("Non-integer type parameter found: {:?}", value);
                     panic!(
                         "Non-integer type parameter found: {}",
                         std::any::type_name::<Yaml>()
