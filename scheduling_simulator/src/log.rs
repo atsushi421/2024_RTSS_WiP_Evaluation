@@ -119,12 +119,14 @@ impl ProcessorLog {
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub struct DAGSetSchedulerLog {
     pub deadline_missed: bool,
+    pub total_utilization: f32,
     pub dag_set_log: Vec<DAGLog>,
     pub processor_log: ProcessorLog,
 }
 
 impl DAGSetSchedulerLog {
     pub fn new(dag_set: &[Graph<Node, i32>], num_cores: usize) -> Self {
+        let total_utilization = dag_set.iter().map(|dag| dag.get_utilization()).sum::<f32>();
         let mut dag_set_log = Vec::with_capacity(dag_set.len());
         for dag in dag_set.iter() {
             dag_set_log.push(DAGLog::new(dag.get_dag_param("dag_id") as usize));
@@ -132,6 +134,7 @@ impl DAGSetSchedulerLog {
 
         Self {
             deadline_missed: false,
+            total_utilization,
             dag_set_log,
             processor_log: ProcessorLog::new(num_cores),
         }
