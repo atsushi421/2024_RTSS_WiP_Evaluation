@@ -44,6 +44,7 @@ pub trait DAG {
     fn set_param_to_all_nodes(&mut self, key: &str, value: i32);
     fn is_node_ready(&self, node_i: NodeIndex) -> bool;
     fn is_completed(&self) -> bool;
+    fn get_utilization(&self) -> f32;
 }
 
 impl DAG for Graph<Node, i32> {
@@ -180,6 +181,15 @@ impl DAG for Graph<Node, i32> {
             }
         })
     }
+
+    fn get_utilization(&self) -> f32 {
+        let total_execution_time: i32 = self
+            .node_weights()
+            .map(|node| node.get_value("execution_time"))
+            .sum();
+
+        total_execution_time as f32 / self.get_dag_param("period") as f32
+    }
 }
 
 #[cfg(test)]
@@ -313,5 +323,21 @@ mod tests_dag {
         assert!(!dag.is_node_ready(n1));
         dag.update_param(n1, "pre_done_count", 1);
         assert!(dag.is_node_ready(n1));
+    }
+
+    #[test]
+    fn test_get_utilization() {
+        let mut dag = Graph::<Node, i32>::new();
+        let n0_params = BTreeMap::from_iter(vec![
+            ("execution_time".to_string(), 1),
+            ("period".to_string(), 10),
+        ]);
+        let n0 = dag.add_node(Node::new(0, n0_params));
+        let n1 = dag.add_node(create_node("execution_time", Some(2)));
+        let n2 = dag.add_node(create_node("execution_time", Some(3)));
+        dag.add_edge(n0, n1, 0);
+        dag.add_edge(n0, n2, 0);
+
+        assert_eq!(dag.get_utilization(), 0.6);
     }
 }
