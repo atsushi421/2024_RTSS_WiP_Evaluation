@@ -1,7 +1,13 @@
 //! Generate a petgraph DAG object from a yaml file
 
 use petgraph::{graph::Graph, prelude::*};
-use std::{collections::BTreeMap, fs, path::PathBuf};
+use rand::seq::SliceRandom;
+use std::{
+    collections::BTreeMap,
+    fs::{self, File},
+    io::{BufRead, BufReader},
+    path::PathBuf,
+};
 use yaml_rust::{Yaml, YamlLoader};
 
 use super::dag::{Node, DAG};
@@ -11,6 +17,18 @@ fn load_yaml(path: &str) -> Vec<Yaml> {
         panic!("Invalid file type: {}", path);
     }
     YamlLoader::load_from_str(&fs::read_to_string(path).unwrap()).unwrap()
+}
+
+fn choice_execution_time(execution_time_file: &str) -> i32 {
+    let file = File::open(execution_time_file).unwrap();
+    let reader = BufReader::new(file);
+    let mut execution_times: Vec<i32> = Vec::new();
+
+    for line in reader.lines() {
+        execution_times.push(line.unwrap().trim().parse::<i32>().unwrap());
+    }
+
+    *execution_times.choose(&mut rand::thread_rng()).unwrap()
 }
 
 fn create_dag_from_yaml(path: &str) -> Graph<Node, i32> {
@@ -24,11 +42,15 @@ fn create_dag_from_yaml(path: &str) -> Graph<Node, i32> {
     for node in nodes {
         let mut params = BTreeMap::new();
         let id = node["id"].as_i64().expect("`id` field does not exist.") as i32;
+        params.insert(
+            "execution_time".to_owned(),
+            choice_execution_time(node["execution_time_file"].as_str().unwrap()),
+        );
 
         // Load node parameters
         for (key, value) in node.as_hash().unwrap() {
             let key_str = key.as_str().unwrap();
-            if key_str == "id" {
+            if key_str == "id" || key_str == "execution_time_file" {
                 continue;
             }
 
