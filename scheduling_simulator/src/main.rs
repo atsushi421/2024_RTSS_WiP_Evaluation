@@ -1,4 +1,4 @@
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use scheduling_simulator::{
     processor::{homogeneous::HomogeneousProcessor, processor_interface::Processor},
     scheduler::{
@@ -9,21 +9,11 @@ use scheduling_simulator::{
     task::{dag::DAG, dag_creator::create_dag_set_from_dir},
 };
 
-#[derive(Clone, ValueEnum)]
-enum Algorithm {
-    ProposedEDF,
-    RM,
-    Greedy,
-}
-
 #[derive(Parser)]
 struct ArgParser {
     /// Path to DAGSet directory.
     #[clap(short = 'd', long = "dag_dir_path", default_value = "../autoware_dags")]
     dag_dir_path: String,
-    /// Scheduling algorithm.
-    #[clap(short = 'a', long = "algorithm", required = true, value_enum)]
-    algorithm: Algorithm,
     /// Number of processing cores.
     #[clap(short = 'c', long = "num_cores", required = true)]
     num_cores: usize,
@@ -37,49 +27,50 @@ struct ArgParser {
 
 fn main() {
     let arg: ArgParser = ArgParser::parse();
-    let mut dag_set = create_dag_set_from_dir(&arg.dag_dir_path);
+    let dag_set = create_dag_set_from_dir(&arg.dag_dir_path);
+
+    // The reason why the all algorithms are executed in the same main function is
+    // to use the same DAGSet that is randomly generated.
+
+    // Proposed EDF
     let processor = HomogeneousProcessor::new(arg.num_cores);
-    let schedule_length = arg.sim_duration;
+    let mut scheduler = GlobalEDFScheduler::new(&dag_set.clone(), &processor);
+    scheduler.schedule(
+        PreemptiveType::Preemptive {
+            key: "ref_absolute_deadline".to_string(),
+        },
+        arg.sim_duration,
+    );
+    scheduler.dump_log(&arg.output_dir_path, "proposed_edf");
 
-    match arg.algorithm {
-        Algorithm::ProposedEDF => {
-            let mut scheduler = GlobalEDFScheduler::new(&dag_set, &processor);
-            scheduler.schedule(
-                PreemptiveType::Preemptive {
-                    key: "ref_absolute_deadline".to_string(),
-                },
-                schedule_length,
-            );
-            scheduler.dump_log(&arg.output_dir_path, "proposed_edf");
-        }
-        Algorithm::RM => {
-            for dag in dag_set.iter_mut() {
-                let dag_period = dag.get_dag_param("period");
-                for node in dag.node_weights_mut() {
-                    node.params.insert("priority".to_string(), dag_period);
-                }
-            }
-
-            let mut scheduler = FixedPriorityScheduler::new(&dag_set, &processor);
-            scheduler.schedule(
-                PreemptiveType::Preemptive {
-                    key: "priority".to_string(),
-                },
-                schedule_length,
-            );
-            scheduler.dump_log(&arg.output_dir_path, "rm");
-        }
-        Algorithm::Greedy => {
-            let uniform_priority = 0;
-            for dag in dag_set.iter_mut() {
-                for node in dag.node_weights_mut() {
-                    node.params.insert("priority".to_string(), uniform_priority);
-                }
-            }
-
-            let mut scheduler = FixedPriorityScheduler::new(&dag_set, &processor);
-            scheduler.schedule(PreemptiveType::NonPreemptive, schedule_length);
-            scheduler.dump_log(&arg.output_dir_path, "greedy");
+    // RM
+    let processor = HomogeneousProcessor::new(arg.num_cores);
+    let mut rm_dag_set = dag_set.clone();
+    for dag in rm_dag_set.iter_mut() {
+        let dag_period = dag.get_dag_param("period");
+        for node in dag.node_weights_mut() {
+            node.params.insert("priority".to_string(), dag_period);
         }
     }
+    let mut scheduler = FixedPriorityScheduler::new(&rm_dag_set, &processor);
+    scheduler.schedule(
+        PreemptiveType::Preemptive {
+            key: "priority".to_string(),
+        },
+        arg.sim_duration,
+    );
+    scheduler.dump_log(&arg.output_dir_path, "rm");
+
+    // Greedy
+    let processor = HomogeneousProcessor::new(arg.num_cores);
+    let mut greedy_dag_set = dag_set.clone();
+    let uniform_priority = 0;
+    for dag in greedy_dag_set.iter_mut() {
+        for node in dag.node_weights_mut() {
+            node.params.insert("priority".to_string(), uniform_priority);
+        }
+    }
+    let mut scheduler = FixedPriorityScheduler::new(&greedy_dag_set, &processor);
+    scheduler.schedule(PreemptiveType::NonPreemptive, arg.sim_duration);
+    scheduler.dump_log(&arg.output_dir_path, "greedy");
 }
