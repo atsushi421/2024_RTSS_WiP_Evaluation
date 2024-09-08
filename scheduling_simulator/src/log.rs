@@ -186,7 +186,7 @@ impl DAGSetSchedulerLog {
         self.processor_log.calc_utilization(schedule_length);
     }
 
-    pub fn dump_to_yaml(&self, dir_path: &str, alg_name: &str) {
+    pub fn dump_to_yaml(&self, dir_path: &str, alg_name: &str, verbose: bool) {
         let date = Utc::now().format("%Y-%m-%d-%H-%M-%S-%3f").to_string();
         let file_name = format!("{}-{}-log", date, alg_name);
         if fs::metadata(dir_path).is_err() {
@@ -196,12 +196,20 @@ impl DAGSetSchedulerLog {
         let file_path = format!("{}/{}.yaml", dir_path, file_name);
         fs::File::create(&file_path).expect("Failed to create file.");
 
-        let yaml = serde_yaml::to_string(&self).expect("Failed to serialize.");
         let mut file = OpenOptions::new()
             .create(true)
             .append(true)
             .open(file_path)
             .expect("Failed to open file.");
+        let yaml = if verbose {
+            serde_yaml::to_string(&self).expect("Failed to serialize.")
+        } else {
+            serde_yaml::to_string(&HashMap::from([
+                ("deadline_missed", self.deadline_missed.to_string()),
+                ("total_utilization", self.total_utilization.to_string()),
+            ]))
+            .expect("Failed to serialize.")
+        };
         file.write_all(yaml.as_bytes())
             .expect("Failed to write to file.");
     }

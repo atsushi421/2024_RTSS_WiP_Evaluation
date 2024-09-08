@@ -41,7 +41,7 @@ fn main() {
         },
         arg.sim_duration,
     );
-    scheduler.dump_log(&arg.output_dir_path, "proposed_edf");
+    scheduler.dump_log(&arg.output_dir_path, "proposed_edf", false);
 
     // RM
     let processor = HomogeneousProcessor::new(arg.num_cores);
@@ -59,7 +59,7 @@ fn main() {
         },
         arg.sim_duration,
     );
-    scheduler.dump_log(&arg.output_dir_path, "rm");
+    scheduler.dump_log(&arg.output_dir_path, "rm", false);
 
     // Greedy
     let processor = HomogeneousProcessor::new(arg.num_cores);
@@ -72,5 +72,5 @@ fn main() {
     }
     let mut scheduler = FixedPriorityScheduler::new(&greedy_dag_set, &processor);
     scheduler.schedule(PreemptiveType::NonPreemptive, arg.sim_duration);
-    scheduler.dump_log(&arg.output_dir_path, "greedy");
+    scheduler.dump_log(&arg.output_dir_path, "greedy", false);
 }

@@ -202,8 +202,8 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
         self.get_current_time()
     }
 
-    fn dump_log(&mut self, dir_path: &str, alg_name: &str) {
-        self.get_log_mut().dump_to_yaml(dir_path, alg_name);
+    fn dump_log(&mut self, dir_path: &str, alg_name: &str, verbose: bool) {
+        self.get_log_mut().dump_to_yaml(dir_path, alg_name, verbose);
     }
 }
 
