@@ -86,6 +86,10 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
                 current_time,
             );
             if response_time > node.get_value("relative_deadline") {
+                println!(
+                    "Deadline missed. dag_id: {}, job_id: {}",
+                    node_dag_id, node_job_id
+                );
                 return Err("Deadline missed".to_string());
             }
             if owner_dag.is_completed() {
