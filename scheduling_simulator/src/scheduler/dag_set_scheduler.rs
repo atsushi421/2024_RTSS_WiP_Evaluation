@@ -63,8 +63,9 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
     fn node_completion(
         &mut self,
         node: &Node,
+        ready_queue: &mut VecDeque<Node>,
         uncompleted_dags: &mut Vec<Graph<Node, i32>>,
-    ) -> Result<Vec<Node>, String> {
+    ) -> Result<(), ()> {
         let node_dag_id = node.get_value("dag_id");
         let node_job_id = node.get_value("job_id");
         let owner_dag = uncompleted_dags
@@ -77,7 +78,6 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
         owner_dag.set_param(node.get_id(), "completed", 1);
         let current_time = self.get_current_time();
 
-        let mut triggered_nodes = Vec::new();
         let suc_nodes = owner_dag.get_suc(node.get_id());
         if suc_nodes.is_empty() {
             let response_time = self.get_log_mut().write_dag_finish_time(
@@ -90,7 +90,7 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
                     "Deadline missed. dag_id: {}, job_id: {}",
                     node_dag_id, node_job_id
                 );
-                return Err("Deadline missed".to_string());
+                return Err(());
             }
             if owner_dag.is_completed() {
                 uncompleted_dags.retain(|dag| {
@@ -106,12 +106,13 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
                     owner_dag[suc].get_value("pre_done_count") + 1,
                 );
                 if owner_dag.is_node_ready(suc) {
-                    triggered_nodes.push(owner_dag[suc].clone());
+                    ready_queue.push_back(owner_dag[suc].clone());
                 }
             }
+            self.sort_ready_queue(ready_queue);
         }
 
-        Ok(triggered_nodes)
+        Ok(())
     }
 
     fn can_preempt(
@@ -187,13 +188,10 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
             // Post-process on completion of node execution
             for result in process_result.iter() {
                 if let ProcessResult::Done(node_data) = result {
-                    if let Ok(triggered_nodes) =
-                        self.node_completion(node_data, &mut uncompleted_dag_jobs)
+                    if self
+                        .node_completion(node_data, &mut ready_queue, &mut uncompleted_dag_jobs)
+                        .is_err()
                     {
-                        for triggered_node in triggered_nodes {
-                            ready_queue.push_back(triggered_node);
-                        }
-                    } else {
                         deadline_missed = true;
                         break 'outer;
                     }
