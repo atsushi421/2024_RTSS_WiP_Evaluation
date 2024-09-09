@@ -12,7 +12,7 @@ nodes:
   execution_time_file: -sensing-lidar-left-ring_outlier_filter-callback_0.txt
 - id: 5
   execution_time_file: -sensing-lidar-concatenate_data-callback_3.txt
-  relative_deadline: 100000
+  relative_deadline: 50000
 
 links:
 - source: 0
