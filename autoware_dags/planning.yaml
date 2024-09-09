@@ -1,26 +1,24 @@
 nodes:
 - id: 0
-  execution_time: 1
-  period: 100
+  execution_time_file: -planning-scenario_planning-lane_driving-behavior_planning-behavior_path_planner-callback_00.txt
+  period: 100000
 - id: 1
-  execution_time: 1
+  execution_time_file: -planning-scenario_planning-lane_driving-behavior_planning-behavior_velocity_planner-callback_13.txt
 - id: 2
-  execution_time: 1
+  execution_time_file: -planning-scenario_planning-lane_driving-motion_planning-elastic_band_smoother-callback_1.txt
 - id: 3
-  execution_time: 1
+  execution_time_file: -planning-scenario_planning-lane_driving-motion_planning-path_optimizer-callback_1.txt
 - id: 4
-  execution_time: 1
+  execution_time_file: -planning-scenario_planning-lane_driving-motion_planning-motion_velocity_planner-callback_7.txt
 - id: 5
-  execution_time: 1
+  execution_time_file: -planning-scenario_planning-lane_driving-motion_planning-obstacle_cruise_planner-callback_3.txt
 - id: 6
-  execution_time: 1
+  execution_time_file: -planning-scenario_planning-scenario_selector-callback_1.txt
 - id: 7
-  execution_time: 1
+  execution_time_file: -planning-scenario_planning-velocity_smoother-callback_4.txt
 - id: 8
-  execution_time: 1
-- id: 9
-  execution_time: 1
-  relative_deadline: 100
+  execution_time_file: -planning-planning_validator-callback_2.txt
+  relative_deadline: 300000
 
 links:
 - source: 0
@@ -39,5 +37,4 @@ links:
   target: 7
 - source: 7
   target: 8
-- source: 8
-  target: 9
+

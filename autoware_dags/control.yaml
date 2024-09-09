@@ -1,17 +1,17 @@
 nodes:
 - id: 0
-  execution_time: 1
-  period: 30
+  execution_time_file: -control-trajectory_follower-controller_node_exe-callback_1.txt
+  period: 30000
 - id: 1
-  execution_time: 1
-  relative_deadline: 30
+  execution_time_file: -control-autoware_shift_decider-callback_0.txt
+  relative_deadline: 30000
 - id: 2
-  execution_time: 1
+  execution_time_file: -control-vehicle_cmd_gate-callback_16.txt
 - id: 3
-  execution_time: 1
+  execution_time_file: -raw_vehicle_cmd_converter-callback_2.txt
 - id: 4
-  execution_time: 1
-  relative_deadline: 30
+  execution_time_file: -pacmod_interface-callback_04.txt
+  relative_deadline: 30000
 
 links:
 - source: 0

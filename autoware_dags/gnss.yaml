@@ -1,10 +1,11 @@
 nodes:
 - id: 0
-  execution_time: 1
-  period: 1000
+  execution_time_file: -sensing-gnss-gnss_poser-callback_1.txt
+  period: 1000000
+
 - id: 1
-  execution_time: 1
-  relative_deadline: 1000
+  execution_time_file: -localization-util-pose_initializer-callback_0.txt
+  relative_deadline: 1000000
 
 links:
 - source: 0

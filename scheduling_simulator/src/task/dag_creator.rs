@@ -19,8 +19,10 @@ fn load_yaml(path: &str) -> Vec<Yaml> {
     YamlLoader::load_from_str(&fs::read_to_string(path).unwrap()).unwrap()
 }
 
-fn choice_execution_time(execution_time_file: &str) -> i32 {
-    let file = File::open(execution_time_file).unwrap();
+const AUTOWARE_ET_DIR: &str = "/home/atsushi/2024_RTSS_WiP_Evaluation/autoware_execution_times";
+
+fn choice_execution_time_us(execution_time_file: &str) -> i32 {
+    let file = File::open(PathBuf::from(AUTOWARE_ET_DIR).join(execution_time_file)).unwrap();
     let reader = BufReader::new(file);
     let mut execution_times: Vec<i32> = Vec::new();
 
@@ -28,7 +30,8 @@ fn choice_execution_time(execution_time_file: &str) -> i32 {
         execution_times.push(line.unwrap().trim().parse::<i32>().unwrap());
     }
 
-    *execution_times.choose(&mut rand::thread_rng()).unwrap()
+    // ns -> us
+    (*execution_times.choose(&mut rand::thread_rng()).unwrap() as f32 / 1000.0).ceil() as i32
 }
 
 fn create_dag_from_yaml(path: &str) -> Graph<Node, i32> {
@@ -44,7 +47,7 @@ fn create_dag_from_yaml(path: &str) -> Graph<Node, i32> {
         let id = node["id"].as_i64().expect("`id` field does not exist.") as i32;
         params.insert(
             "execution_time".to_owned(),
-            choice_execution_time(node["execution_time_file"].as_str().unwrap()),
+            choice_execution_time_us(node["execution_time_file"].as_str().unwrap()),
         );
 
         // Load node parameters

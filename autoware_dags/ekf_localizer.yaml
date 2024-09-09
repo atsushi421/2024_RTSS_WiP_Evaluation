@@ -1,15 +1,15 @@
 nodes:
 - id: 0
-  execution_time: 1
-  period: 20
+  execution_time_file: -localization-pose_twist_fusion_filter-ekf_localizer-callback_1.txt
+  period: 20000
 - id: 1
-  execution_time: 1
-  relative_deadline: 20
+  execution_time_file: -localization-pose_estimator-ndt_scan_matcher-callback_1.txt
+  relative_deadline: 20000
 - id: 2
-  execution_time: 1
+  execution_time_file: -localization-pose_twist_fusion_filter-stop_filter-callback_0.txt
 - id: 3
-  execution_time: 1
-  relative_deadline: 20
+  execution_time_file: -localization-pose_twist_fusion_filter-twist2accel-callback_0.txt
+  relative_deadline: 20000
 
 links:
 - source: 0

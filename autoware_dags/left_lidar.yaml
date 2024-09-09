@@ -1,18 +1,18 @@
 nodes:
 - id: 0
-  execution_time: 1
-  period: 100
+  execution_time_file: -sensing-lidar-left-velodyne_driver_ros_wrapper_node-callback_0.txt
+  period: 100000
 - id: 1
-  execution_time: 1
+  execution_time_file: -sensing-lidar-left-crop_box_filter_self-callback_0.txt
 - id: 2
-  execution_time: 1
+  execution_time_file: -sensing-lidar-left-crop_box_filter_mirror-callback_0.txt
 - id: 3
-  execution_time: 1
+  execution_time_file: -sensing-lidar-left-distortion_corrector_node-callback_2.txt
 - id: 4
-  execution_time: 1
+  execution_time_file: -sensing-lidar-left-ring_outlier_filter-callback_0.txt
 - id: 5
-  execution_time: 1
-  relative_deadline: 100
+  execution_time_file: -sensing-lidar-concatenate_data-callback_3.txt
+  relative_deadline: 100000
 
 links:
 - source: 0

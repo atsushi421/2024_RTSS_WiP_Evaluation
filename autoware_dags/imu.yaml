@@ -1,15 +1,15 @@
 nodes:
 - id: 0
-  execution_time: 1
-  period: 33
+  execution_time_file: -sensing-imu-imu_corrector-callback_0.txt
+  period: 33000
 - id: 1
-  execution_time: 1
+  execution_time_file: -localization-twist_estimator-gyro_odometer-callback_1.txt
 - id: 2
-  execution_time: 1
-  relative_deadline: 33
+  execution_time_file: -localization-pose_twist_fusion_filter-ekf_localizer-callback_3.txt
+  relative_deadline: 33000
 - id: 3
-  execution_time: 1
-  relative_deadline: 33
+  execution_time_file: -localization-pose_twist_fusion_filter-twist2accel-callback_1.txt
+  relative_deadline: 33000
 
 links:
 - source: 0
