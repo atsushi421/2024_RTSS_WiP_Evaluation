@@ -207,6 +207,7 @@ impl DAGSetSchedulerLog {
             serde_yaml::to_string(&HashMap::from([
                 ("deadline_missed", self.deadline_missed.to_string()),
                 ("total_utilization", self.total_utilization.to_string()),
+                ("num_cores", self.processor_log.num_cores.to_string()),
             ]))
             .expect("Failed to serialize.")
         };
