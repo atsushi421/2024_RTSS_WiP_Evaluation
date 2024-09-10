@@ -65,7 +65,7 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
         node: &Node,
         ready_queue: &mut VecDeque<Node>,
         uncompleted_dags: &mut Vec<Graph<Node, i32>>,
-    ) -> Result<(), ()> {
+    ) -> Result<(), i32> {
         let node_dag_id = node.get_value("dag_id");
         let node_job_id = node.get_value("job_id");
         let owner_dag = uncompleted_dags
@@ -90,7 +90,7 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
                     "Deadline missed. dag_id: {}, job_id: {}",
                     node_dag_id, node_job_id
                 );
-                return Err(());
+                return Err(node_job_id);
             }
             if owner_dag.is_completed() {
                 uncompleted_dags.retain(|dag| {
@@ -137,12 +137,13 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
         None
     }
 
-    fn calculate_log(&mut self, deadline_missed: bool) {
+    fn calculate_log(&mut self, deadline_missed: bool, missed_job_id: Option<i32>) {
         let current_time = self.get_current_time();
         let log = self.get_log_mut();
         log.calculate_utilization(current_time);
         log.calc_response_times();
         log.deadline_missed = deadline_missed;
+        log.missed_job_id = missed_job_id;
     }
 
     fn schedule(&mut self, preemptive_type: PreemptiveType, duration: i32) -> i32 {
@@ -156,6 +157,7 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
 
         // Start scheduling
         let mut deadline_missed = false;
+        let mut missed_job_id = None;
         let mut ready_queue = VecDeque::new();
         let mut uncompleted_dag_jobs = Vec::new();
 
@@ -188,11 +190,11 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
             // Post-process on completion of node execution
             for result in process_result.iter() {
                 if let ProcessResult::Done(node_data) = result {
-                    if self
-                        .node_completion(node_data, &mut ready_queue, &mut uncompleted_dag_jobs)
-                        .is_err()
+                    if let Err(missed_job_i) =
+                        self.node_completion(node_data, &mut ready_queue, &mut uncompleted_dag_jobs)
                     {
                         deadline_missed = true;
+                        missed_job_id = Some(missed_job_i);
                         break 'outer;
                     }
                 }
@@ -200,7 +202,7 @@ pub trait DAGSetSchedulerBase<T: Processor + Clone> {
             self.sort_ready_queue(&mut ready_queue);
         }
 
-        self.calculate_log(deadline_missed);
+        self.calculate_log(deadline_missed, missed_job_id);
         self.get_current_time()
     }
 

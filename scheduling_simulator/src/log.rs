@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     fs::{self, OpenOptions},
+    i32,
     io::Write,
 };
 
@@ -119,6 +120,7 @@ impl ProcessorLog {
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub struct DAGSetSchedulerLog {
     pub deadline_missed: bool,
+    pub missed_job_id: Option<i32>,
     pub total_utilization: f32,
     pub dag_set_log: Vec<DAGLog>,
     pub processor_log: ProcessorLog,
@@ -134,6 +136,7 @@ impl DAGSetSchedulerLog {
 
         Self {
             deadline_missed: false,
+            missed_job_id: None,
             total_utilization,
             dag_set_log,
             processor_log: ProcessorLog::new(num_cores),
@@ -206,6 +209,10 @@ impl DAGSetSchedulerLog {
         } else {
             serde_yaml::to_string(&HashMap::from([
                 ("deadline_missed", self.deadline_missed.to_string()),
+                (
+                    "missed_job_id",
+                    self.missed_job_id.unwrap_or(i32::MAX).to_string(),
+                ),
                 ("total_utilization", self.total_utilization.to_string()),
                 ("num_cores", self.processor_log.num_cores.to_string()),
             ]))
