@@ -20,5 +20,9 @@ Cargo.lock
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-autoware_execution_times/
 outputs/
+ros2_*
+caret_converted
+caret_record_info.yaml
+caret.log
+metadata
