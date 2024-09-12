@@ -2,7 +2,7 @@
 
 ## Setup
 
-Please install Rust tool chain and jupyter-notebook:
+Please install Rust tool chain and jupyter-lab:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -23,7 +23,9 @@ As this takes several hours to complete, this step can be skipped using the data
 
 1. `jupyter-lab`
 2. Open `visualize_result.ipynb` from left side bar.
-3. Run all cells
+3. Run all cells via GUI.
+
+![image](https://github.com/user-attachments/assets/89e36e0e-1465-4096-afe3-6b99cc0f53c1)
 
 > [!NOTE]
 > Since our simulations are based on randomly selected execution times, the generated figure may differ slightly from the figure in the paper, even though the trend remains the same.
